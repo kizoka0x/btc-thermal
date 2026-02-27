@@ -1,9 +1,13 @@
 name: BTC Daily Update
+name: BTC Daily Update
 
 on:
-  schedule:
-    - cron: "0 2 * * *"
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: write
 
 jobs:
   update:
