@@ -4,21 +4,31 @@ import numpy as np
 import json
 from datetime import datetime
 
-# -------- BTC PRICE SIMPLE --------
+# -------- GET JSON --------
+def get_json(url):
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+    r = requests.get(url, headers=headers, timeout=15)
+    
+    if r.status_code != 200:
+        raise Exception(f"API error {r.status_code}")
+    
+    return r.json()
+
+# -------- BTC PRICE --------
 def get_btc_price():
     url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-    r = requests.get(url, timeout=10)
-    return r.json()["bitcoin"]["usd"]
+    data = get_json(url)
+    return data["bitcoin"]["usd"]
 
-# -------- HISTORICAL PRICE VIA ALTERNATIVE --------
-def get_btc_history():
-    # endpoint plus stable
-    url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365"
-    r = requests.get(url, timeout=10)
-    data = r.json()
+# -------- BTC HISTORY --------
+def get_btc_history(days=365):
+    url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={days}"
+    data = get_json(url)
 
     if "prices" not in data:
-        raise Exception("CoinGecko blocked request")
+        raise Exception("No price data returned")
 
     prices = pd.Series([p[1] for p in data["prices"]])
     return prices
@@ -55,7 +65,7 @@ def run():
     with open("btc_dashboard.json", "w") as f:
         json.dump(dashboard, f, indent=2)
 
-    print("Dashboard updated successfully")
+    print("Dashboard updated")
 
 if __name__ == "__main__":
     run()
