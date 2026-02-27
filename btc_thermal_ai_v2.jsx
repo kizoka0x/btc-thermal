@@ -244,34 +244,6 @@ async function fetchAllLive(apiKey, logFn) {
   return result;
 }
 
-// ─── AI SCREENSHOT EXTRACTION PROMPT ─────────────────────────────────────
-const SYSTEM_PROMPT = `Tu es un expert en analyse on-chain Bitcoin. On te soumet des captures d'écran de CryptoQuant.
-Extrais UNIQUEMENT les valeurs numériques demandées depuis les graphiques et tooltips visibles.
-Réponds EXCLUSIVEMENT en JSON pur, sans markdown, sans commentaire, sans balises.
-Si une valeur n'est pas visible dans les images fournies, utilise null.
-
-Format JSON strict :
-{
-  "btcPrice": nombre_ou_null,
-  "date": "DD MMM YYYY" ou null,
-  "etfNetflow": nombre_en_milliards_ou_null,
-  "usdtSma": nombre_en_milliards_ou_null,
-  "ntvSellCount": entier_de_-2_a_2_ou_null,
-  "futuresPower": nombre_pourcentage_ou_null,
-  "bullBear30d": nombre_ou_null,
-  "bullBear365d": nombre_ou_null,
-  "soprRatio": nombre_ou_null,
-  "sthNupl": nombre_ou_null,
-  "lthNupl": nombre_ou_null,
-  "utxoRatio": nombre_ou_null,
-  "mvrvPct": nombre_0_a_100_ou_null,
-  "mayerMultiple": nombre_ou_null,
-  "sharpeShort": nombre_ou_null,
-  "whales1k10k": nombre_BTC_ou_null
-}
-
-Règles : etfNetflow en B$ | usdtSma SMA30 60d change en B$ | ntvSellCount: 2=double sell, 1=sell, 0=neutre, -1=buy, -2=double buy | futuresPower % | mvrvPct 0-100 | sharpeShort peut être -34`;
-
 // ─── COMPONENTS ──────────────────────────────────────────────────────────
 function TC({ level, label }) {
   const t = THERM[Math.max(0,Math.min(9,Math.round(level)))];
@@ -419,9 +391,6 @@ useEffect(() => {
     })
     .catch(err => console.error("Fetch error:", err));
 }, []);
-  const [loading, setLoading]   = useState(false);
-  const [log, setLog]           = useState([]);
-  const [previews, setPreviews] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]   = useState([]);
   const [manualMode, setManualMode] = useState(false);
@@ -504,65 +473,6 @@ useEffect(() => {
     setFetching(false);
   }, [vals, history]);
 
-  // ── AI SCREENSHOT EXTRACTION ────────────────────────────────────────────
-  const extractFromScreenshots = useCallback(async (files) => {
-    setLoading(true);
-    setLog([]);
-    const newLog = [];
-
-    const images = await Promise.all(files.map(f => new Promise(res => {
-      const r = new FileReader();
-      r.onload = e => res({ base64: e.target.result.split(",")[1], type: f.type, name: f.name });
-      r.readAsDataURL(f);
-    })));
-
-    setPreviews(images.map(i => `data:${i.type};base64,${i.base64}`));
-    newLog.push({ ok:true, msg:`${images.length} screenshot(s) → analyse IA…` });
-    setLog([...newLog]);
-
-    const content = [
-      ...images.map(img => ({ type:"image", source:{ type:"base64", media_type:img.type, data:img.base64 } })),
-      { type:"text", text:`Analyse ces ${images.length} capture(s) CryptoQuant et extrais toutes les valeurs en JSON strict.` }
-    ];
-
-    try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:SYSTEM_PROMPT, messages:[{role:"user",content}] })
-      });
-      const data = await resp.json();
-      const raw  = data.content?.map(b=>b.text||"").join("").trim();
-      
-      let parsed;
-      try { parsed = JSON.parse(raw.replace(/```json|```/g,"").trim()); }
-      catch { newLog.push({ok:false,msg:"Erreur parsing JSON"}); setLog([...newLog]); setLoading(false); return; }
-
-      const fieldLabels = { btcPrice:"Prix BTC", etfNetflow:"ETF Netflow", usdtSma:"USDT SMA(30)",
-        ntvSellCount:"NTV Signal", futuresPower:"Futures Power", bullBear30d:"BB 30d",
-        bullBear365d:"BB 365d", soprRatio:"SOPR", sthNupl:"STH NUPL", lthNupl:"LTH NUPL",
-        utxoRatio:"UTXO Ratio", mvrvPct:"MVRV %", mayerMultiple:"Mayer", sharpeShort:"Sharpe", whales1k10k:"Baleines" };
-
-      const updated = { ...vals };
-      let count = 0;
-      for (const [k,v] of Object.entries(parsed)) {
-        if (v !== null && v !== undefined && k in updated) {
-          updated[k] = v; count++;
-          newLog.push({ ok:true, msg:`${fieldLabels[k]||k} → ${v}` });
-        }
-      }
-      const missing = Object.entries(parsed).filter(([,v])=>v===null).map(([k])=>fieldLabels[k]||k);
-      if (missing.length) newLog.push({ warn:true, msg:`Non détecté: ${missing.join(", ")}` });
-      newLog.push({ ok:true, msg:`✓ ${count} valeur(s) extraite(s)` });
-      setLog([...newLog]);
-      setVals(updated);
-      await saveToStorage(updated);
-    } catch(e) {
-      newLog.push({ ok:false, msg:`Erreur API: ${e.message}` });
-      setLog([...newLog]);
-    }
-    setLoading(false);
-  }, [vals, history]);
 
   // ── SCORES ───────────────────────────────────────────────────────────────
   const s = {
@@ -699,17 +609,7 @@ useEffect(() => {
       {/* API LOG */}
       {apiLog.length>0 && <div style={{marginBottom:14}}><LogPanel log={apiLog}/></div>}
 
-      {/* SCREENSHOT ZONE */}
-      <div style={{marginBottom:14}}>
-        <div style={{fontFamily:"monospace",fontSize:9,color:"rgba(88,166,255,.7)",textTransform:"uppercase",letterSpacing:2,marginBottom:7}}>── 📸 MISE À JOUR PAR SCREENSHOTS (fallback si API non dispo)</div>
-        <DropZone onFiles={extractFromScreenshots} loading={loading}/>
-        <LogPanel log={log}/>
-        {previews.length>0 && (
-          <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
-            {previews.map((p,i)=><img key={i} src={p} alt="" style={{height:50,borderRadius:5,border:`1px solid ${BORDER}`,objectFit:"cover"}}/>)}
-          </div>
-        )}
-      </div>
+
 
       {/* MANUAL OVERRIDE */}
       {manualMode && (
