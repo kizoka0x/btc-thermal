@@ -25,18 +25,24 @@ def get_json(url):
         raise Exception(f"API error {r.status_code}")
 
     return r.json()
-# -------------------------
-# BTC PRICE
-# -------------------------
-def get_btc_price():
-    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-    data = get_json(url)
-    return data["bitcoin"]["usd"]
 
-def get_btc_history(days=400):
-    url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={days}"
+# -------- BTC PRICE (Coinbase) --------
+def get_btc_price():
+    url = "https://api.exchange.coinbase.com/products/BTC-USD/ticker"
     data = get_json(url)
-    prices = pd.Series([p[1] for p in data["prices"]])
+    return float(data["price"])
+
+# -------- BTC HISTORY (Coinbase) --------
+def get_btc_history(days=365):
+    url = "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400"
+    data = get_json(url)
+
+    # format: [time, low, high, open, close, volume]
+    closes = [candle[4] for candle in data]
+
+    closes.reverse()  # ordre ancien -> récent
+    prices = pd.Series(closes[-days:])
+
     return prices
 
 # -------------------------
@@ -142,6 +148,12 @@ def run():
 
     save_dashboard(dashboard)
     print("btc_dashboard.json updated")
-
+    
+# -------------------------
+# SAVE FILE
+# -------------------------
+def save_dashboard(data):
+    with open("btc_dashboard.json", "w") as f:
+        json.dump(data, f, indent=2)
 if __name__ == "__main__":
     run()
