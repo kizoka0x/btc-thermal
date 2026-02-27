@@ -3,25 +3,21 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
+import time
 
 def get_json(url):
-    return requests.get(url).json()
+    headers = {"User-Agent": "Mozilla/5.0"}
+    r = requests.get(url, headers=headers, timeout=10)
+    if r.status_code != 200:
+        raise Exception(f"API error {r.status_code}")
+    return r.json()
 
-# BTC history
 def get_btc_history(days=400):
     url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={days}"
     data = get_json(url)
     prices = pd.Series([p[1] for p in data["prices"]])
     return prices
 
-# USDT SMA30
-def get_usdt_sma():
-    url = "https://api.coingecko.com/api/v3/coins/tether/market_chart?vs_currency=usd&days=40"
-    data = get_json(url)
-    prices = [p[1] for p in data["prices"]]
-    return float(np.mean(prices[-30:]))
-
-# Indicators
 def compute_mayer(prices):
     ma200 = prices.rolling(200).mean().iloc[-1]
     return float(prices.iloc[-1] / ma200)
@@ -43,8 +39,7 @@ def run():
         "mvrvPct": float((prices < prices.iloc[-1]).sum() / len(prices) * 100),
         "bullBear30d": compute_bullbear(prices, 30),
         "bullBear365d": compute_bullbear(prices, 365),
-        "sharpeShort": compute_sharpe(prices),
-        "usdtSma30": get_usdt_sma()
+        "sharpeShort": compute_sharpe(prices)
     }
 
     with open("btc_dashboard.json", "w") as f:
