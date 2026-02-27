@@ -12,7 +12,24 @@ def get_json(url):
         "accept": "application/json",
         "User-Agent": "btc-thermal-dashboard"
     }
-# -------- BGEOMETRICS ONCHAIN --------
+
+    r = requests.get(url, headers=headers, timeout=20)
+
+    # Retry si CoinGecko ou autre rate limit
+    if r.status_code in [401, 429]:
+        import time
+        time.sleep(5)
+        r = requests.get(url, headers=headers, timeout=20)
+
+    if r.status_code != 200:
+        raise Exception(f"API error {r.status_code} : {url}")
+
+    return r.json()
+
+
+# -------------------------
+# BGEOMETRICS ONCHAIN
+# -------------------------
 def get_bgeometrics_indicator(indicator):
     try:
         url = f"https://api.bgeometrics.com/v1/{indicator}?asset=btc"
@@ -21,23 +38,10 @@ def get_bgeometrics_indicator(indicator):
         if "data" not in data or len(data["data"]) == 0:
             return None
 
-        # dernière valeur
         return float(data["data"][-1]["value"])
 
     except:
         return None
-    r = requests.get(url, headers=headers, timeout=20)
-
-    # Si CoinGecko bloque → on attend et on réessaie une fois
-    if r.status_code == 401 or r.status_code == 429:
-        import time
-        time.sleep(5)
-        r = requests.get(url, headers=headers, timeout=20)
-
-    if r.status_code != 200:
-        raise Exception(f"API error {r.status_code}")
-
-    return r.json()
 
 # -------- BTC PRICE (Coinbase) --------
 def get_btc_price():
