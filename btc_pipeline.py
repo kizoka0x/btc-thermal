@@ -28,7 +28,7 @@ def get_json(url):
 
 
 # -------------------------
-# BGEOMETRICS ONCHAIN
+# BGEOMETRICS SAFE FETCH
 # -------------------------
 def get_bgeometrics_indicator(indicator):
     try:
@@ -38,7 +38,16 @@ def get_bgeometrics_indicator(indicator):
         if "data" not in data or len(data["data"]) == 0:
             return None
 
-        return float(data["data"][-1]["value"])
+        value = data["data"][-1]["value"]
+
+        # conversion sécurisée
+        value = float(value)
+
+        # protection contre valeurs nulles ou invalides
+        if value == 0 or np.isnan(value):
+            return None
+
+        return value
 
     except:
         return None
@@ -139,10 +148,21 @@ def proxy_nupl(prices, days):
 def compute_nupl(prices, window):
     if len(prices) < window:
         return 0
-    low = prices.iloc[-window:].min()
-    high = prices.iloc[-window:].max()
-    current = prices.iloc[-1]
-    return float((current - low) / (high - low) - 0.5)
+
+    segment = prices.iloc[-window:]
+    low = segment.min()
+    high = segment.max()
+    current = segment.iloc[-1]
+
+    # protection division par zéro
+    if high == low:
+        return 0
+
+    # normalisation autour de 0
+    nupl = (current - low) / (high - low)
+
+    # recentrage -0.5 → +0.5
+    return float(nupl - 0.5)
 
 # UTXO profit proxy
 def proxy_utxo(prices):
@@ -192,7 +212,8 @@ def run():
     lth_nupl_real = get_bgeometrics_indicator("lth_nupl")
     sth_nupl_real = get_bgeometrics_indicator("sth_nupl")
     utxo_real = get_bgeometrics_indicator("utxo_profit")
-    print("BGeometrics:", sopr_real, lth_nupl_real, sth_nupl_real, utxo_real)
+
+    print("BGeometrics:", sopr_real, lth_nupl_real, sth_nupl_real, utxo_real)# ----- ONCHAIN REAL (BGeometrics) -----
 
     # Proxies gratuits et stables
     neg_days = (prices.pct_change().tail(7) < 0).sum()
