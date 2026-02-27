@@ -152,7 +152,18 @@ def run():
     etf_flow = compute_bullbear(prices, 30) * 100
 
     # Proxies gratuits et stables
-    ntv_sell_count = float((prices.pct_change().tail(7) < 0).sum())
+   neg_days = (prices.pct_change().tail(7) < 0).sum()
+
+if neg_days >= 5:
+    ntv_sell_count = 2
+elif neg_days >= 3:
+    ntv_sell_count = 1
+elif neg_days == 0:
+    ntv_sell_count = -2
+elif neg_days <= 2:
+    ntv_sell_count = -1
+else:
+    ntv_sell_count = 0
 
     dashboard = {
         "updated": datetime.utcnow().isoformat(),
