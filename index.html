@@ -39,7 +39,13 @@ const DEFAULT = {
   mvrvPct: 0,
   bullBear30d: 0,
   bullBear365d: 0,
-  sharpeShort: 0
+  sharpeShort: 0,
+
+  etfNetflow: 0,
+  usdtSma: 0,
+  futuresPower: 0,
+  ntvSellCount: 0,
+  whales1k10k: 0
 };
 
 
@@ -91,6 +97,11 @@ function App() {
       <p>BullBear 30j : {data.bullBear30d}</p>
       <p>BullBear 365j : {data.bullBear365d}</p>
       <p>Sharpe : {data.sharpeShort}</p>
+      <p>ETF Flow 30j : {data.etfNetflow}</p>
+      <p>USDT SMA30 : {data.usdtSma}</p>
+      <p>Futures Power : {data.futuresPower}</p>
+      <p>NTV Sell Count : {data.ntvSellCount}</p>
+      <p>Whales 1k-10k : {data.whales1k10k}</p>
     </div>
   );
 }
