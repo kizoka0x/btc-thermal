@@ -1,31 +1,37 @@
 useEffect(() => {
   const fetchData = async () => {
     try {
-      const res = await fetch("/btc_dashboard.json");
+      const res = await fetch("/btc_dashboard.json?t=" + Date.now());
       const data = await res.json();
+      
 
-      setVals({
-        btcPrice: data.price,
-        mayerMultiple: data.mayer,
-        mvrvPct: data.mvrv,
-        bullBear30d: data.bullbear_30d,
-        bullBear365d: data.bullbear_365d,
-        sharpeShort: data.sharpe,
-        etfNetflow: data.etf_flow_30d,
-        usdtSma: data.usdt_sma30,
-        futuresPower: data.futures_power,
-        ntvSellCount: data.ntv_sell_count,
-        whales1k10k: data.whales_1k_10k
-      });
+setVals(prev => ({
+  ...prev,   // garde les valeurs actuelles
+  btcPrice: data.price,
+  mayerMultiple: data.mayer,
+  mvrvPct: data.mvrv,
+  bullBear30d: data.bullbear_30d,
+  bullBear365d: data.bullbear_365d,
+  sharpeShort: data.sharpe,
+  etfNetflow: data.etf_flow_30d,
+  usdtSma: data.usdt_sma30,
+  futuresPower: data.futures_power,
+  ntvSellCount: data.ntv_sell_count,
+  whales1k10k: data.whales_1k_10k,
+  date: data.last_update
+}));
 
       setLastUpdate(data.last_update);
+
     } catch (e) {
-      console.log("Erreur chargement JSON", e);
+      console.log("Erreur chargement JSON :", e);
     }
   };
 
-  fetchData();
-  const interval = setInterval(fetchData, 300000); // 5 min
+  fetchData(); // charge au démarrage
+
+  const interval = setInterval(fetchData, 300000); // recharge toutes les 5 min
+
   return () => clearInterval(interval);
 }, []);
 
@@ -78,11 +84,6 @@ const DEFAULT = {
   mvrvPct: 0, mayerMultiple: 0.671, sharpeShort: -34.27, whales1k10k: 90986,
 };
 
-// ─── AI EXTRACTION PROMPT ────────────────────────────────────────────────
-const SYSTEM_PROMPT = `Tu es un expert en analyse on-chain Bitcoin. On te soumet des captures d'écran de CryptoQuant.
-Extrais UNIQUEMENT les valeurs numériques demandées depuis les graphiques et tooltips visibles.
-Réponds EXCLUSIVEMENT en JSON pur, sans markdown, sans commentaire, sans balises.
-Si une valeur n'est pas visible dans les images fournies, utilise null.
 
 Format JSON strict :
 {
