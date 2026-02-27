@@ -113,34 +113,54 @@ def proxy_futures_power(prices):
 # SOPR proxy
 def proxy_sopr(prices):
     return float(prices.iloc[-1] / prices.rolling(7).mean().iloc[-1])
+def compute_sopr(prices):
+    ma7 = prices.rolling(7).mean().iloc[-1]
+    return float(prices.iloc[-1] / ma7)
 
 # NUPL proxy
 def proxy_nupl(prices, days):
     return compute_bullbear(prices, days)
+def compute_nupl(prices, window):
+    if len(prices) < window:
+        return 0
+    low = prices.iloc[-window:].min()
+    high = prices.iloc[-window:].max()
+    current = prices.iloc[-1]
+    return float((current - low) / (high - low) - 0.5)
 
 # UTXO profit proxy
 def proxy_utxo(prices):
     return compute_mvrv_pct(prices)
+def compute_utxo_ratio(prices):
+    return float((prices < prices.iloc[-1]).sum() / len(prices))
 
 # Whale proxy (volatilité volume impossible gratuitement → prix proxy)
 # -------- WHALES (CoinGlass free) --------
 def get_whales_coinglass():
     url = "https://open-api.coinglass.com/public/v2/bitcoin/addresses"
+
     headers = {
-        "accept": "application/json",
-        "coinglassSecret": ""
+        "accept": "application/json"
     }
 
     try:
         r = requests.get(url, headers=headers, timeout=20)
+
+        if r.status_code != 200:
+            return 0
+
         data = r.json()
 
-        # variation des wallets 1000+ BTC (proxy accumulation)
-        value = data["data"]["addresses_1000"]
+        if "data" not in data:
+            return 0
+
+        value = data["data"].get("addresses_1000", 0)
+
         return int(value)
 
     except:
         return 0
+        
 
 # -------------------------
 # MAIN
