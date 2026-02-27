@@ -1,0 +1,33 @@
+name: BTC Daily Update
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Télécharger le repo
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les librairies
+        run: pip install requests pandas numpy
+
+      - name: Lancer le script
+        run: python btc_pipeline.py
+
+      - name: Sauvegarder les données
+        run: |
+          git config --global user.name "bot"
+          git config --global user.email "bot@github.com"
+          git add btc_dashboard.json
+          git commit -m "Daily update" || echo "No changes"
+          git push
