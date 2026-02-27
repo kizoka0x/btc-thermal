@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+const { useState, useCallback, useRef, useEffect } = React;
 
 // ─── THERMAL SCORE CALCULATORS ────────────────────────────────────────────
 const calcETF    = v => v<=-25?{n:0,c:1,m:2,l:5}:v<=-15?{n:1,c:1,m:2,l:5}:v<=-8?{n:2,c:2,m:3,l:6}:v<=-2?{n:3,c:3,m:4,l:6}:v<=0?{n:4,c:4,m:5,l:7}:v<=5?{n:6,c:6,m:6,l:7}:v<=15?{n:7,c:7,m:7,l:8}:{n:9,c:8,m:8,l:8};
@@ -168,7 +168,7 @@ function ExtractionLog({ log }) {
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────
-export default function BTCThermalAI() {
+function BTCThermalAI() {
   const [vals, setVals]       = useState(DEFAULT);
   const [loading, setLoading] = useState(false);
   const [log, setLog]         = useState([]);
@@ -590,3 +590,4 @@ export default function BTCThermalAI() {
     </div>
   );
 }
+ReactDOM.createRoot(document.getElementById("root")).render(<BTCThermalAI />);
