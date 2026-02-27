@@ -2,44 +2,43 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>BTC Dashboard</title>
+  <title>BTC Thermal Dashboard</title>
 
+  <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-</head>
 
-<body style="background:#0b0f14;color:white;font-family:sans-serif">
-  <div id="root"></div>
-
-  <script type="text/babel">
-    const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
-
-    function App() {
-      const [data, setData] = React.useState(null);
-
-      React.useEffect(() => {
-        fetch(DATA_URL + "?t=" + Date.now())
-          .then(r => r.json())
-          .then(setData)
-          .catch(console.error);
-      }, []);
-
-      if (!data) return <h2>Loading...</h2>;
-
-      return (
-        <div style={{padding:20}}>
-          <h1>BTC Dashboard</h1>
-          <p>Prix BTC : {data.btcPrice} $</p>
-          <p>Mayer Multiple : {data.mayerMultiple}</p>
-          <p>BullBear 30d : {data.bullBear30d}</p>
-          <p>Sharpe : {data.sharpeShort}</p>
-          <p>Update : {data.updated}</p>
-        </div>
-      );
+  <style>
+    body {
+      margin:0;
+      background:#0b0f14;
+      color:white;
+      font-family:sans-serif;
     }
+  </style>
+</head>
+<body>
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ─────────────────────────────
+// CONFIG
+// ─────────────────────────────
+const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
+
+// ─────────────────────────────
+// TON DASHBOARD THERMIQUE
+// ─────────────────────────────
+
+// ⬇️ IMPORTANT
+// COPIE ICI tout le contenu de ton fichier :
+// btc_thermal_ai_v2.jsx
+// (à partir de const DEFAULT jusqu'à la fin)
+
+</script>
+
 </body>
 </html>
