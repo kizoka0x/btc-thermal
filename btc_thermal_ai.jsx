@@ -76,6 +76,7 @@ const DEFAULT = {
 };
 
 
+/*
 Format JSON strict :
 {
   "btcPrice": nombre_ou_null,
