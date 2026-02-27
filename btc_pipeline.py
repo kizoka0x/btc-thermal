@@ -79,6 +79,24 @@ def compute_mvrv_pct(prices):
 # APPROXIMATIONS GRATUITES
 # -------------------------
 
+# Futures Open Interest global (proxy réel marché dérivés)
+def get_futures_power():
+    try:
+        url = "https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=30"
+        data = get_json(url)
+
+        oi_values = [float(d["sumOpenInterest"]) for d in data]
+
+        if len(oi_values) < 2:
+            return 50
+
+        change = (oi_values[-1] - oi_values[0]) / oi_values[0]
+        power = 50 + change * 100
+
+        return float(power)
+    except:
+        return 50
+
 # ETF Flow (proxy = variation prix 30j)
 def proxy_etf_flow(prices):
     return compute_bullbear(prices, 30) * 100
@@ -143,7 +161,7 @@ def run():
         # Proxies neutres pour indicateurs on-chain indisponibles
        "etfNetflow": etf_flow,
         "usdtSma": usdt_sma,
-        "futuresPower": 50,
+        "futuresPower": get_futures_power(),
         "soprRatio": 1,
         "lthNupl": 0,
         "sthNupl": 0,
