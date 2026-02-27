@@ -50,7 +50,7 @@ def get_btc_price():
     return float(data["price"])
 
 # -------- BTC HISTORY (Coinbase) --------
-def get_btc_history(days=500):
+def get_btc_history(days=365):
     url = "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400"
     data = get_json(url)
 
@@ -182,8 +182,7 @@ def get_whales_coinglass():
 # MAIN
 # -------------------------
 def run():
-    print("BGeometrics LTH:", lth_nupl_real)
-    prices = get_btc_history(500)
+    prices = get_btc_history(365)
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
@@ -193,6 +192,7 @@ def run():
     lth_nupl_real = get_bgeometrics_indicator("lth_nupl")
     sth_nupl_real = get_bgeometrics_indicator("sth_nupl")
     utxo_real = get_bgeometrics_indicator("utxo_profit")
+    print("BGeometrics:", sopr_real, lth_nupl_real, sth_nupl_real, utxo_real)
 
     # Proxies gratuits et stables
     neg_days = (prices.pct_change().tail(7) < 0).sum()
