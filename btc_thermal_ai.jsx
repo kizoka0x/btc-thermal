@@ -14,12 +14,6 @@ setVals(prev => ({
   date: data.last_update ?? prev.date
 }));
 
-      setLastUpdate(data.updated);
-
-    } catch (e) {
-      console.log("Erreur chargement JSON :", e);
-    }
-  };
 
   fetchData(); // charge au démarrage
   const interval = setInterval(fetchData, 300000); // recharge toutes les 5 min
