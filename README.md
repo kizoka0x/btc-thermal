@@ -1,2 +1,0 @@
-# btc-thermal
-btc-thermal
