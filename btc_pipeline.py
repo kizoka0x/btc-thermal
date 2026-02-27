@@ -183,13 +183,14 @@ def run():
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
-# ----- ONCHAIN REAL (BGeometrics) -----
-sopr_real = get_bgeometrics_indicator("sopr")
-lth_nupl_real = get_bgeometrics_indicator("lth_nupl")
-sth_nupl_real = get_bgeometrics_indicator("sth_nupl")
-utxo_real = get_bgeometrics_indicator("utxo_profit")
 
-# Proxies gratuits et stables
+    # ----- ONCHAIN REAL (BGeometrics) -----
+    sopr_real = get_bgeometrics_indicator("sopr")
+    lth_nupl_real = get_bgeometrics_indicator("lth_nupl")
+    sth_nupl_real = get_bgeometrics_indicator("sth_nupl")
+    utxo_real = get_bgeometrics_indicator("utxo_profit")
+
+    # Proxies gratuits et stables
     neg_days = (prices.pct_change().tail(7) < 0).sum()
 
     if neg_days >= 5:
