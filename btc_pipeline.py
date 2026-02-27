@@ -84,6 +84,7 @@ def get_usdt_sma30():
 # -------------------------
 # INDICATORS (FREE METHODS)
 # -------------------------
+
 def compute_mayer(prices):
     ma200 = prices.rolling(200).mean().iloc[-1]
     return float(prices.iloc[-1] / ma200)
@@ -99,6 +100,20 @@ def compute_sharpe(prices):
 
 def compute_mvrv_pct(prices):
     return float((prices < prices.iloc[-1]).sum() / len(prices) * 100)
+    
+# -------------------------
+# THERMAL SCORING
+# -------------------------
+def score_range(value, low, high):
+    if value is None:
+        return 50
+
+    if value <= low:
+        return 0
+    if value >= high:
+        return 100
+
+    return float((value - low) / (high - low) * 100)
 
 # -------------------------
 # APPROXIMATIONS GRATUITES
@@ -261,9 +276,6 @@ def run():
         "lthNupl": lth_nupl_real if lth_nupl_real is not None else compute_nupl(prices, 365),
         "sthNupl": sth_nupl_real if sth_nupl_real is not None else compute_nupl(prices, 30),
         
-    
-
-        
         
        # UTXO proxy = % en profit
        "utxoRatio": utxo_real if utxo_real else compute_utxo_ratio(prices),
@@ -274,6 +286,34 @@ def run():
 
     save_dashboard(dashboard)
     print("btc_dashboard.json updated")
+ 
+    # -------------------------
+    # THERMAL SCORE ENGINE
+    # -------------------------
+    scores = []
+
+    # Mayer (cycle)
+    scores.append(score_range(dashboard["mayerMultiple"], 0.8, 2.4))
+
+    # MVRV proxy
+    scores.append(score_range(dashboard["mvrvPct"], 20, 90))
+
+    # LTH NUPL
+    scores.append(score_range(dashboard["lthNupl"], 0.1, 0.7))
+
+    # SOPR
+    scores.append(score_range(dashboard["soprRatio"], 0.98, 1.05))
+
+    # Futures sentiment
+    scores.append(score_range(dashboard["futuresPower"], 40, 80))
+
+    # ETF flows
+    scores.append(score_range(dashboard["etfNetflow"], -20, 20))
+
+    # Moyenne finale
+    thermal_score = float(np.mean(scores))
+
+    dashboard["thermalScore"] = thermal_score
     
 # -------------------------
 # SAVE FILE
