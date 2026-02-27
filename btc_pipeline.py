@@ -151,19 +151,20 @@ def run():
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
 
-    # Proxies gratuits et stables
-   neg_days = (prices.pct_change().tail(7) < 0).sum()
 
-if neg_days >= 5:
-    ntv_sell_count = 2
-elif neg_days >= 3:
-    ntv_sell_count = 1
-elif neg_days == 0:
-    ntv_sell_count = -2
-elif neg_days <= 2:
-    ntv_sell_count = -1
-else:
-    ntv_sell_count = 0
+# Proxies gratuits et stables
+    neg_days = (prices.pct_change().tail(7) < 0).sum()
+
+    if neg_days >= 5:
+        ntv_sell_count = 2
+    elif neg_days >= 3:
+        ntv_sell_count = 1
+    elif neg_days == 0:
+        ntv_sell_count = -2
+    elif neg_days <= 2:
+        ntv_sell_count = -1
+    else:
+        ntv_sell_count = 0
 
     dashboard = {
         "updated": datetime.utcnow().isoformat(),
@@ -182,11 +183,11 @@ else:
         # Risk
         "sharpeShort": compute_sharpe(prices),
 
-        # Market pressure proxy
+        # Market pressure
         "ntvSellCount": ntv_sell_count,
 
-        # Proxies neutres pour indicateurs on-chain indisponibles
-       "etfNetflow": etf_flow,
+        # Autres indicateurs
+        "etfNetflow": etf_flow,
         "usdtSma": usdt_sma,
         "futuresPower": get_futures_power(),
         "soprRatio": 1,
