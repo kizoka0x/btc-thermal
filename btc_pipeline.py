@@ -8,12 +8,23 @@ from datetime import datetime
 # UTILS
 # -------------------------
 def get_json(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    r = requests.get(url, headers=headers, timeout=15)
+    headers = {
+        "accept": "application/json",
+        "User-Agent": "btc-thermal-dashboard"
+    }
+
+    r = requests.get(url, headers=headers, timeout=20)
+
+    # Si CoinGecko bloque → on attend et on réessaie une fois
+    if r.status_code == 401 or r.status_code == 429:
+        import time
+        time.sleep(5)
+        r = requests.get(url, headers=headers, timeout=20)
+
     if r.status_code != 200:
         raise Exception(f"API error {r.status_code}")
-    return r.json()
 
+    return r.json()
 # -------------------------
 # BTC PRICE
 # -------------------------
