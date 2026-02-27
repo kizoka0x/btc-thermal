@@ -190,11 +190,18 @@ def run():
         "etfNetflow": etf_flow,
         "usdtSma": usdt_sma,
         "futuresPower": get_futures_power(),
-        "soprRatio": 1,
-        "lthNupl": 0,
-        "sthNupl": 0,
-        "utxoRatio": 0,
-        "whales1k10k": get_whales_coinglass()
+        # SOPR proxy = prix vs moyenne 7 jours
+        "soprRatio": float(prices.iloc[-1] / prices.rolling(7).mean().iloc[-1]),
+
+       # NUPL proxies = performance cycle
+       "lthNupl": compute_bullbear(prices, 365),
+       "sthNupl": compute_bullbear(prices, 30),
+
+       # UTXO proxy = % en profit
+       "utxoRatio": compute_mvrv_pct(prices),
+
+      # Whales proxy (si API échoue → fallback)
+       "whales1k10k": get_whales_coinglass() or int(prices.iloc[-1] / 1000)
     }
 
     save_dashboard(dashboard)
