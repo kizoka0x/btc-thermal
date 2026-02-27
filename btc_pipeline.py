@@ -259,7 +259,8 @@ def run():
 
        # NUPL proxies = performance cycle
         "lthNupl": lth_nupl_real if lth_nupl_real is not None else compute_nupl(prices, 365),
-        "lthNupl": lth_nupl_real if lth_nupl_real is not None else compute_nupl(prices, 365),
+        "sthNupl": sth_nupl_real if sth_nupl_real is not None else compute_nupl(prices, 30),
+    
 
         
         
