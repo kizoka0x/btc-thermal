@@ -1,7 +1,7 @@
 useEffect(() => {
   const fetchData = async () => {
     try {
-      const res = await fetch("btc_dashboard.json");
+      const res = await fetch("/btc_dashboard.json");
       const data = await res.json();
 
       setVals({
