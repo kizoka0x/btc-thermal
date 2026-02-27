@@ -106,7 +106,7 @@ Règles d'extraction :
 - mayerMultiple : valeur décimale (ex: 0.671)
 - sharpeShort : Sharpe Ratio court terme (peut être très négatif comme -34.27)
 - whales1k10k : BTC net 60D de la cohorte 1k-10k (peut être positif ou négatif)`;
-
+*/
 // ─── COMPONENTS ──────────────────────────────────────────────────────────
 function TC({ level, label }) {
   const t = THERM[Math.max(0,Math.min(9,Math.round(level)))];
