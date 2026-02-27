@@ -14,7 +14,7 @@ setVals(prev => ({
   date: data.last_update ?? prev.date
 }));
 
-      setLastUpdate(data.last_update);
+      setLastUpdate(data.updated);
 
     } catch (e) {
       console.log("Erreur chargement JSON :", e);
@@ -202,11 +202,9 @@ useEffect(() => {
   // Chargement au démarrage
   fetchDashboard();
 
-  // Rafraîchissement toutes les 5 minutes
   const interval = setInterval(fetchDashboard, 300000);
-
-  // Nettoyage
   return () => clearInterval(interval);
+
 }, []);
   const saveToStorage = async (newVals) => {
     const now = new Date().toLocaleString("fr-FR");
