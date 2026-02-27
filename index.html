@@ -3,15 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <title>BTC Dashboard</title>
+
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 </head>
-<body>
+
+<body style="background:#0b0f14;color:white;font-family:sans-serif">
   <div id="root"></div>
 
   <script type="text/babel">
-    // COLLE ICI le contenu de btc_thermal_ai_v2.jsx
+    const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
+
+    function App() {
+      const [data, setData] = React.useState(null);
+
+      React.useEffect(() => {
+        fetch(DATA_URL + "?t=" + Date.now())
+          .then(r => r.json())
+          .then(setData)
+          .catch(console.error);
+      }, []);
+
+      if (!data) return <h2>Loading...</h2>;
+
+      return (
+        <div style={{padding:20}}>
+          <h1>BTC Dashboard</h1>
+          <p>Prix BTC : {data.btcPrice} $</p>
+          <p>Mayer Multiple : {data.mayerMultiple}</p>
+          <p>BullBear 30d : {data.bullBear30d}</p>
+          <p>Sharpe : {data.sharpeShort}</p>
+          <p>Update : {data.updated}</p>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
 </body>
 </html>
