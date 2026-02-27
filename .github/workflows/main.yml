@@ -1,5 +1,4 @@
 name: BTC Daily Update
-name: BTC Daily Update
 
 on:
   workflow_dispatch:
