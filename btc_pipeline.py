@@ -95,37 +95,41 @@ def run():
     prices = get_btc_history()
     btc_price = get_btc_price()
 
+    # Proxies gratuits et stables
+    ntv_sell_count = float((prices.pct_change().tail(7) < 0).sum())
+
     dashboard = {
         "updated": datetime.utcnow().isoformat(),
 
-        "btcPrice": btc_price,
+        # Prix
+        "btcPrice": float(btc_price),
+
+        # Cycle / valuation
         "mayerMultiple": compute_mayer(prices),
-        "mvrvPct": compute_mvrv_pct(prices),
+        "mvrvPct": float((prices < prices.iloc[-1]).sum() / len(prices) * 100),
+
+        # Trend
         "bullBear30d": compute_bullbear(prices, 30),
         "bullBear365d": compute_bullbear(prices, 365),
+
+        # Risk
         "sharpeShort": compute_sharpe(prices),
 
-        # Flux & Liquidité
-        "etfNetflow": proxy_etf_flow(prices),
-        "usdtSma": get_usdt_sma30(),
-        "ntvSellCount": proxy_ntv(prices),
+        # Market pressure proxy
+        "ntvSellCount": ntv_sell_count,
 
-        # Dérivés
-        "futuresPower": proxy_futures_power(prices),
-
-        # Holders
-        "soprRatio": proxy_sopr(prices),
-        "sthNupl": proxy_nupl(prices, 30),
-        "lthNupl": proxy_nupl(prices, 365),
-        "utxoRatio": proxy_utxo(prices),
-
-        # Whales
-        "whales1k10k": proxy_whales(prices)
+        # Proxies neutres pour indicateurs on-chain indisponibles
+        "etfNetflow": 0,
+        "usdtSma": 0,
+        "futuresPower": 50,
+        "soprRatio": 1,
+        "lthNupl": 0,
+        "sthNupl": 0,
+        "utxoRatio": 0,
+        "whales1k10k": 0
     }
 
-    with open("btc_dashboard.json", "w") as f:
-        json.dump(dashboard, f, indent=2)
-
+    save_dashboard(dashboard)
     print("btc_dashboard.json updated")
 
 if __name__ == "__main__":
