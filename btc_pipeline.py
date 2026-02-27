@@ -69,3 +69,22 @@ def run():
 
 if __name__ == "__main__":
     run()
+import os
+import json
+
+def save_dashboard(data):
+    os.makedirs("data", exist_ok=True)
+    with open("data/btc_data.json", "w") as f:
+        json.dump(data, f, indent=2)
+
+def run():
+    ...
+    dashboard = {
+        "btcPrice": btc_price,
+        "mayerMultiple": compute_mayer(prices),
+        "mvrvPct": float((prices < prices.iloc[-1]).sum() / len(prices) * 100),
+        "bullBear30d": compute_bullbear(prices, 30),
+        "sharpeShort": compute_sharpe(prices)
+    }
+
+    save_dashboard(dashboard)
