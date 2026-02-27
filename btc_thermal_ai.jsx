@@ -1,24 +1,17 @@
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const res = await fetch("/btc_dashboard.json?t=" + Date.now());
-      const data = await res.json();
-      
-
 setVals(prev => ({
-  ...prev,   // garde les valeurs actuelles
-  btcPrice: data.price,
-  mayerMultiple: data.mayer,
-  mvrvPct: data.mvrv,
-  bullBear30d: data.bullbear_30d,
-  bullBear365d: data.bullbear_365d,
-  sharpeShort: data.sharpe,
-  etfNetflow: data.etf_flow_30d,
-  usdtSma: data.usdt_sma30,
-  futuresPower: data.futures_power,
-  ntvSellCount: data.ntv_sell_count,
-  whales1k10k: data.whales_1k_10k,
-  date: data.last_update
+  ...prev,
+  btcPrice: data.price ?? prev.btcPrice,
+  mayerMultiple: data.mayer ?? prev.mayerMultiple,
+  mvrvPct: data.mvrv ?? prev.mvrvPct,
+  bullBear30d: data.bullbear_30d ?? prev.bullBear30d,
+  bullBear365d: data.bullbear_365d ?? prev.bullBear365d,
+  sharpeShort: data.sharpe ?? prev.sharpeShort,
+  etfNetflow: data.etf_flow_30d ?? prev.etfNetflow,
+  usdtSma: data.usdt_sma30 ?? prev.usdtSma,
+  futuresPower: data.futures_power ?? prev.futuresPower,
+  ntvSellCount: data.ntv_sell_count ?? prev.ntvSellCount,
+  whales1k10k: data.whales_1k_10k ?? prev.whales1k10k,
+  date: data.last_update ?? prev.date
 }));
 
       setLastUpdate(data.last_update);
@@ -29,9 +22,7 @@ setVals(prev => ({
   };
 
   fetchData(); // charge au démarrage
-
   const interval = setInterval(fetchData, 300000); // recharge toutes les 5 min
-
   return () => clearInterval(interval);
 }, []);
 
@@ -177,7 +168,7 @@ function BTCThermalAI() {
 useEffect(() => {
   const fetchDashboard = async () => {
     try {
-      const res = await fetch("btc_dashboard.json?cache=" + Date.now());
+      const res = await fetch("/btc_dashboard.json?cache=" + Date.now());
       const data = await res.json();
 
       // On part des valeurs actuelles (important)
@@ -199,7 +190,7 @@ useEffect(() => {
         return updated;
       });
 
-      // Mise à jour de l'heure si présente
+            // Mise à jour de la date
       if (data.last_update) {
         setLastUpdate(data.last_update);
       }
@@ -211,11 +202,13 @@ useEffect(() => {
     }
   };
 
+  // Chargement au démarrage
   fetchDashboard();
 
-  // refresh toutes les 5 minutes
+  // Rafraîchissement toutes les 5 minutes
   const interval = setInterval(fetchDashboard, 300000);
 
+  // Nettoyage
   return () => clearInterval(interval);
 }, []);
   const saveToStorage = async (newVals) => {
@@ -230,23 +223,6 @@ useEffect(() => {
     } catch {}
   };
 
-  // ── AI EXTRACTION ───────────────────────────────────────────────────────
-  const extractFromScreenshots = useCallback(async (files) => {
-    setLoading(true);
-    setLog([]);
-    const newLog = [];
-
-    // Convert files to base64
-    const images = await Promise.all(files.map(f => new Promise(res => {
-      const r = new FileReader();
-      r.onload = e => res({ base64: e.target.result.split(",")[1], type: f.type, name: f.name });
-      r.readAsDataURL(f);
-    })));
-
-    // Previews
-    setPreviews(images.map(i => `data:${i.type};base64,${i.base64}`));
-    newLog.push({ ok: true, msg: `${images.length} screenshot(s) chargé(s) → envoi à Claude…` });
-    setLog([...newLog]);
 
     // Build message content
     const content = [
