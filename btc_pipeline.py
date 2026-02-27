@@ -115,6 +115,7 @@ def run():
     prices = get_btc_history()
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
+    etf_flow = compute_bullbear(prices, 30) * 100
 
     # Proxies gratuits et stables
     ntv_sell_count = float((prices.pct_change().tail(7) < 0).sum())
@@ -140,7 +141,7 @@ def run():
         "ntvSellCount": ntv_sell_count,
 
         # Proxies neutres pour indicateurs on-chain indisponibles
-        "etfNetflow": 0,
+       "etfNetflow": etf_flow,
         "usdtSma": usdt_sma,
         "futuresPower": 50,
         "soprRatio": 1,
