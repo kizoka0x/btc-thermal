@@ -50,7 +50,7 @@ def get_btc_price():
     return float(data["price"])
 
 # -------- BTC HISTORY (Coinbase) --------
-def get_btc_history(days=365):
+def get_btc_history(days=1000):
     url = "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400"
     data = get_json(url)
 
@@ -183,7 +183,7 @@ def get_whales_coinglass():
 # MAIN
 # -------------------------
 def run():
-    prices = get_btc_history()
+    prices = get_btc_history(1000)
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
