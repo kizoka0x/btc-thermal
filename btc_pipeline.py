@@ -8,13 +8,20 @@ import time
 def get_json(url):
     headers = {"User-Agent": "Mozilla/5.0"}
     r = requests.get(url, headers=headers, timeout=10)
+    
     if r.status_code != 200:
         raise Exception(f"API error {r.status_code}")
+    
     return r.json()
 
 def get_btc_history(days=400):
     url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={days}"
     data = get_json(url)
+
+    # sécurité si CoinGecko bloque
+    if "prices" not in data:
+        raise Exception("CoinGecko error: no price data")
+
     prices = pd.Series([p[1] for p in data["prices"]])
     return prices
 
@@ -30,6 +37,9 @@ def compute_sharpe(prices):
     return float((returns.mean() / returns.std()) * np.sqrt(365))
 
 def run():
+    # petite pause pour éviter le rate limit
+    time.sleep(2)
+
     prices = get_btc_history()
 
     dashboard = {
@@ -44,6 +54,8 @@ def run():
 
     with open("btc_dashboard.json", "w") as f:
         json.dump(dashboard, f, indent=2)
+
+    print("Dashboard updated successfully")
 
 if __name__ == "__main__":
     run()
