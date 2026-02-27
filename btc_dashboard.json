@@ -1,9 +1,18 @@
 {
-  "updated": "2026-02-27T14:25:47.961040",
-  "btcPrice": 66071.0,
-  "mayerMultiple": 0.6765956578473463,
-  "mvrvPct": 0.819672131147541,
-  "bullBear30d": -0.21888570870120883,
-  "bullBear365d": -0.21769697056202997,
-  "sharpeShort": -0.3100301042205696
+  "updated": "2026-02-27T15:00:43.232613",
+  "btcPrice": 65954.63,
+  "mayerMultiple": 0.6742505359032402,
+  "mvrvPct": 0.8571428571428572,
+  "bullBear30d": -0.22107221120487697,
+  "bullBear365d": 0,
+  "sharpeShort": -0.3745497127808217,
+  "ntvSellCount": 6.0,
+  "etfNetflow": 0,
+  "usdtSma": 0,
+  "futuresPower": 50,
+  "soprRatio": 1,
+  "lthNupl": 0,
+  "sthNupl": 0,
+  "utxoRatio": 0,
+  "whales1k10k": 0
 }
