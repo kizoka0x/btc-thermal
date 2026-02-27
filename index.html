@@ -5,10 +5,34 @@
   <title>BTC Thermal Dashboard</title>
 
   <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0b0f14;
+      color: white;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+<div id="root"></div>
+
 <script type="text/babel">
 
+// ==========================
+// 1) Adresse du JSON GitHub
+// ==========================
 const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
 
+
+// ==========================
+// 2) Valeurs par défaut
+// ==========================
 const DEFAULT = {
   btcPrice: 0,
   mayerMultiple: 0,
@@ -18,126 +42,63 @@ const DEFAULT = {
   sharpeShort: 0
 };
 
-function BTCThermal() {
-  const [vals, setVals] = React.useState(DEFAULT);
-  const [status, setStatus] = React.useState("Chargement...");
 
-React.useEffect(() => {
-  function load() {
-    fetch(DATA_URL + "?t=" + Date.now())
-      .then(r => r.json())
-      .then(d => {
-        setVals(d);          // IMPORTANT : setVals, pas setData
-        setStatus("Live OK");
-      })
-      .catch(() => setStatus("Erreur chargement"));
-  }
-
-  load(); // chargement immédiat
-
-  const interval = setInterval(load, 5 * 60 * 1000); // toutes les 5 minutes
-
-  return () => clearInterval(interval);
-}, []);
-
-  const score =
-    (
-      vals.mvrvPct +
-      (vals.mayerMultiple * 50) +
-      (vals.bullBear30d * 100) +
-      (vals.sharpeShort)
-    ) / 4;
-
-  const color =
-    score < 0 ? "#ff4d4d" :
-    score < 20 ? "#ffa500" :
-    "#40c057";
-
-  return (
-    <div style={{padding:20}}>
-      <h1>BTC Thermal Dashboard</h1>
-      <p>Status: {status}</p>
-
-      <h2>Prix BTC : ${vals.btcPrice}</h2>
-
-      <div style={{
-        marginTop:20,
-        padding:20,
-        background:"#111",
-        borderRadius:10
-      }}>
-        <h3>Score thermique</h3>
-        <div style={{
-          fontSize:40,
-          color:color
-        }}>
-          {score.toFixed(1)}
-        </div>
-      </div>
-
-      <h3>Indicateurs</h3>
-      <ul>
-        <li>MVRV % : {vals.mvrvPct}</li>
-        <li>Mayer : {vals.mayerMultiple}</li>
-        <li>BullBear 30d : {vals.bullBear30d}</li>
-        <li>BullBear 365d : {vals.bullBear365d}</li>
-        <li>Sharpe : {vals.sharpeShort}</li>
-      </ul>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCThermal />);
-
-</script>
-
-// URL du fichier généré par ton pipeline GitHub
-const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
-
-// Valeurs par défaut (si GitHub ne répond pas)
-const DEFAULT = {
-  btcPrice: 0,
-  mayerMultiple: 0,
-  mvrvPct: 0,
-  bullBear30d: 0,
-  bullBear365d: 0,
-  sharpeShort: 0
-};
-
+// ==========================
+// 3) Application
+// ==========================
 function App() {
+
   const [data, setData] = React.useState(DEFAULT);
   const [status, setStatus] = React.useState("Chargement...");
 
   React.useEffect(() => {
-    fetch(DATA_URL + "?t=" + Date.now())
-      .then(r => r.json())
-      .then(d => {
-        setData(d);
-        setStatus("Données live chargées");
-        console.log("Live:", d);
-      })
-      .catch(e => {
-        setStatus("Erreur chargement");
-        console.error(e);
-      });
+
+    function loadData() {
+      fetch(DATA_URL + "?t=" + Date.now())
+        .then(response => response.json())
+        .then(json => {
+          setData(json);
+          setStatus("Live OK");
+          console.log("Live:", json);
+        })
+        .catch(() => {
+          setStatus("Erreur chargement");
+        });
+    }
+
+    // Chargement au démarrage
+    loadData();
+
+    // Recharge toutes les 5 minutes
+    const interval = setInterval(loadData, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+
   }, []);
+
 
   return (
     <div style={{padding:20}}>
       <h1>BTC Thermal Dashboard</h1>
-      <p>Status: {status}</p>
 
-      <h2>Prix BTC: ${data.btcPrice}</h2>
-      <p>Mayer: {data.mayerMultiple}</p>
-      <p>MVRV %: {data.mvrvPct}</p>
-      <p>BullBear 30d: {data.bullBear30d}</p>
-      <p>BullBear 365d: {data.bullBear365d}</p>
-      <p>Sharpe: {data.sharpeShort}</p>
+      <p>Status : {status}</p>
+      <p>Dernière maj GitHub : {data.updated}</p>
+
+      <h2>Prix BTC : ${data.btcPrice}</h2>
+
+      <p>Mayer : {data.mayerMultiple}</p>
+      <p>MVRV % : {data.mvrvPct}</p>
+      <p>BullBear 30j : {data.bullBear30d}</p>
+      <p>BullBear 365j : {data.bullBear365d}</p>
+      <p>Sharpe : {data.sharpeShort}</p>
     </div>
   );
 }
 
+
+// ==========================
+// 4) Lancement
+// ==========================
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 </script>
