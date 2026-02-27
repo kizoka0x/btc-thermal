@@ -202,7 +202,7 @@ def get_whales_coinglass():
 # MAIN
 # -------------------------
 def run():
-    prices = get_btc_history(1500)
+    prices = get_btc_history(365)
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
@@ -215,8 +215,10 @@ def run():
    
     print("BGeometrics SOPR:", sopr_real)
     print("BGeometrics LTH:", lth_nupl_real)
+    print("LTH BGeometrics:", lth_nupl_real)
     print("BGeometrics STH:", sth_nupl_real)
     print("BGeometrics UTXO:", utxo_real)
+    print("Fallback LTH calc:", compute_nupl(prices, 365))
 
     # Proxies gratuits et stables
     neg_days = (prices.pct_change().tail(7) < 0).sum()
@@ -260,9 +262,10 @@ def run():
         # SOPR proxy = prix vs moyenne 7 jours
         "soprRatio": sopr_real if sopr_real else compute_sopr(prices),
 
-       # NUPL proxies = performance cycle
-        "lthNupl": lth_nupl_real if lth_nupl_real else compute_nupl(prices, 365),
-        "sthNupl": sth_nupl_real if sth_nupl_real else compute_nupl(prices, 30),
+       # NUPL proxies = performance cycle       
+        "lthNupl": lth_nupl_real if lth_nupl_real is not None else compute_nupl(prices, 365),
+        "sthNupl": sth_nupl_real if sth_nupl_real is not None else compute_nupl(prices, 30),
+        
     
 
         
