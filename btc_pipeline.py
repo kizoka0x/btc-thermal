@@ -12,7 +12,20 @@ def get_json(url):
         "accept": "application/json",
         "User-Agent": "btc-thermal-dashboard"
     }
+# -------- BGEOMETRICS ONCHAIN --------
+def get_bgeometrics_indicator(indicator):
+    try:
+        url = f"https://api.bgeometrics.com/v1/{indicator}?asset=btc"
+        data = get_json(url)
 
+        if "data" not in data or len(data["data"]) == 0:
+            return None
+
+        # dernière valeur
+        return float(data["data"][-1]["value"])
+
+    except:
+        return None
     r = requests.get(url, headers=headers, timeout=20)
 
     # Si CoinGecko bloque → on attend et on réessaie une fois
@@ -170,7 +183,11 @@ def run():
     btc_price = get_btc_price()
     usdt_sma = get_usdt_sma30()
     etf_flow = compute_bullbear(prices, 30) * 100
-
+# ----- ONCHAIN REAL (BGeometrics) -----
+sopr_real = get_bgeometrics_indicator("sopr")
+lth_nupl_real = get_bgeometrics_indicator("lth_nupl")
+sth_nupl_real = get_bgeometrics_indicator("sth_nupl")
+utxo_real = get_bgeometrics_indicator("utxo_profit")
 
 # Proxies gratuits et stables
     neg_days = (prices.pct_change().tail(7) < 0).sum()
@@ -211,14 +228,15 @@ def run():
         "usdtSma": usdt_sma,
         "futuresPower": get_futures_power(),
         # SOPR proxy = prix vs moyenne 7 jours
-        "soprRatio": float(prices.iloc[-1] / prices.rolling(7).mean().iloc[-1]),
+        "soprRatio": sopr_real if sopr_real else compute_sopr(prices),
 
        # NUPL proxies = performance cycle
-       "lthNupl": compute_bullbear(prices, 365),
-       "sthNupl": compute_bullbear(prices, 30),
+       "lthNupl": lth_nupl_real if lth_nupl_real else compute_nupl(prices, 365),
+       "sthNupl": sth_nupl_real if sth_nupl_real else compute_nupl(prices, 30),
+       
 
        # UTXO proxy = % en profit
-       "utxoRatio": compute_mvrv_pct(prices),
+       "utxoRatio": utxo_real if utxo_real else compute_utxo_ratio(prices),
 
       # Whales proxy (si API échoue → fallback)
        "whales1k10k": get_whales_coinglass() or int(prices.iloc[-1] / 1000)
