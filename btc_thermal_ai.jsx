@@ -164,38 +164,35 @@ function BTCThermalAI() {
       } catch {}
     })();
   }, []);
-// ── SYNC AVEC btc_dashboard.json (incrémentation modèle) ──
+// ── SYNC AVEC btc_dashboard.json (format officiel) ──
 useEffect(() => {
   const fetchDashboard = async () => {
     try {
-      const res = await fetch("/btc_dashboard.json?cache=" + Date.now());
+      const res = await fetch("/btc_dashboard.json?t=" + Date.now());
       const data = await res.json();
 
-      // On part des valeurs actuelles (important)
-      setVals(prev => {
-        const updated = { ...prev };
+      setVals(prev => ({
+        ...prev,
 
-        if (data.price != null)            updated.btcPrice = data.price;
-        if (data.mayer != null)            updated.mayerMultiple = data.mayer;
-        if (data.mvrv != null)             updated.mvrvPct = data.mvrv;
-        if (data.bullbear_30d != null)     updated.bullBear30d = data.bullbear_30d;
-        if (data.bullbear_365d != null)    updated.bullBear365d = data.bullbear_365d;
-        if (data.sharpe != null)           updated.sharpeShort = data.sharpe;
-        if (data.etf_flow_30d != null)     updated.etfNetflow = data.etf_flow_30d;
-        if (data.usdt_sma30 != null)       updated.usdtSma = data.usdt_sma30;
-        if (data.futures_power != null)    updated.futuresPower = data.futures_power;
-        if (data.ntv_sell_count != null)   updated.ntvSellCount = data.ntv_sell_count;
-        if (data.whales_1k_10k != null)    updated.whales1k10k = data.whales_1k_10k;
+        btcPrice: data.btcPrice ?? prev.btcPrice,
+        mayerMultiple: data.mayerMultiple ?? prev.mayerMultiple,
+        mvrvPct: data.mvrvPct ?? prev.mvrvPct,
+        bullBear30d: data.bullBear30d ?? prev.bullBear30d,
+        bullBear365d: data.bullBear365d ?? prev.bullBear365d,
+        sharpeShort: data.sharpeShort ?? prev.sharpeShort,
+        etfNetflow: data.etfNetflow ?? prev.etfNetflow,
+        usdtSma: data.usdtSma ?? prev.usdtSma,
+        futuresPower: data.futuresPower ?? prev.futuresPower,
+        ntvSellCount: data.ntvSellCount ?? prev.ntvSellCount,
+        whales1k10k: data.whales1k10k ?? prev.whales1k10k
+      }));
 
-        return updated;
-      });
-
-            // Mise à jour de la date
-      if (data.last_update) {
-        setLastUpdate(data.last_update);
+      // Date de mise à jour
+      if (data.updated) {
+        setLastUpdate(data.updated);
       }
 
-      console.log("btc_dashboard.json synchronisé");
+      console.log("Dashboard synchronisé :", data.updated);
 
     } catch (e) {
       console.log("Erreur chargement btc_dashboard.json", e);
