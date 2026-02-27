@@ -147,22 +147,17 @@ def proxy_nupl(prices, days):
     return compute_bullbear(prices, days)
 def compute_nupl(prices, window):
     if len(prices) < window:
-        return 0
+        window = len(prices)
 
     segment = prices.iloc[-window:]
     low = segment.min()
     high = segment.max()
     current = segment.iloc[-1]
 
-    # protection division par zéro
     if high == low:
-        return 0
+        return 0.0
 
-    # normalisation autour de 0
-    nupl = (current - low) / (high - low)
-
-    # recentrage -0.5 → +0.5
-    return float(nupl - 0.5)
+    return float((current - low) / (high - low))
 
 # UTXO profit proxy
 def proxy_utxo(prices):
