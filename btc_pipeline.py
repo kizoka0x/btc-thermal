@@ -2,18 +2,17 @@ import requests
 import pandas as pd
 import numpy as np
 import json
+import os
 from datetime import datetime
 
 # -------- GET JSON --------
 def get_json(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
     r = requests.get(url, headers=headers, timeout=15)
-    
+
     if r.status_code != 200:
         raise Exception(f"API error {r.status_code}")
-    
+
     return r.json()
 
 # -------- BTC PRICE --------
@@ -47,6 +46,12 @@ def compute_sharpe(prices):
     returns = prices.pct_change().dropna()
     return float((returns.mean() / returns.std()) * np.sqrt(365))
 
+# -------- SAVE --------
+def save_dashboard(data):
+    os.makedirs("data", exist_ok=True)
+    with open("data/btc_data.json", "w") as f:
+        json.dump(data, f, indent=2)
+
 # -------- MAIN --------
 def run():
     prices = get_btc_history()
@@ -62,29 +67,8 @@ def run():
         "sharpeShort": compute_sharpe(prices)
     }
 
-    with open("btc_dashboard.json", "w") as f:
-        json.dump(dashboard, f, indent=2)
-
-    print("Dashboard updated")
+    save_dashboard(dashboard)
+    print("btc_data.json created")
 
 if __name__ == "__main__":
     run()
-import os
-import json
-
-def save_dashboard(data):
-    os.makedirs("data", exist_ok=True)
-    with open("data/btc_data.json", "w") as f:
-        json.dump(data, f, indent=2)
-
-def run():
-    ...
-    dashboard = {
-        "btcPrice": btc_price,
-        "mayerMultiple": compute_mayer(prices),
-        "mvrvPct": float((prices < prices.iloc[-1]).sum() / len(prices) * 100),
-        "bullBear30d": compute_bullbear(prices, 30),
-        "sharpeShort": compute_sharpe(prices)
-    }
-
-    save_dashboard(dashboard)
