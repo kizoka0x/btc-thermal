@@ -114,6 +114,28 @@ def score_range(value, low, high):
         return 100
 
     return float((value - low) / (high - low) * 100)
+def compute_thermal_score(d):
+    scores = []
+
+    # Mayer
+    scores.append(score_range(d["mayerMultiple"], 0.8, 2.4))
+
+    # MVRV
+    scores.append(score_range(d["mvrvPct"], 20, 90))
+
+    # LTH NUPL
+    scores.append(score_range(d["lthNupl"], 0.1, 0.7))
+
+    # SOPR
+    scores.append(score_range(d["soprRatio"], 0.98, 1.05))
+
+    # Futures
+    scores.append(score_range(d["futuresPower"], 40, 80))
+
+    # ETF
+    scores.append(score_range(d["etfNetflow"], -20, 20))
+
+    return float(np.mean(scores))
 
 # -------------------------
 # APPROXIMATIONS GRATUITES
@@ -284,40 +306,13 @@ def run():
        "whales1k10k": get_whales_coinglass() or int(prices.iloc[-1] / 1000)
         
     }
-
-        # Calcul du Thermal Score
+    
+    # Calcul du Thermal Score
     dashboard["thermalScore"] = compute_thermal_score(dashboard)
-
     save_dashboard(dashboard)
     print("btc_dashboard.json updated")
  
-    # -------------------------
-    # THERMAL SCORE ENGINE
-    # -------------------------
-    scores = []
 
-    # Mayer (cycle)
-    scores.append(score_range(dashboard["mayerMultiple"], 0.8, 2.4))
-
-    # MVRV proxy
-    scores.append(score_range(dashboard["mvrvPct"], 20, 90))
-
-    # LTH NUPL
-    scores.append(score_range(dashboard["lthNupl"], 0.1, 0.7))
-
-    # SOPR
-    scores.append(score_range(dashboard["soprRatio"], 0.98, 1.05))
-
-    # Futures sentiment
-    scores.append(score_range(dashboard["futuresPower"], 40, 80))
-
-    # ETF flows
-    scores.append(score_range(dashboard["etfNetflow"], -20, 20))
-
-    # Moyenne finale
-    thermal_score = float(np.mean(scores))
-
-    dashboard["thermalScore"] = thermal_score
     
 # -------------------------
 # SAVE FILE
