@@ -5,24 +5,84 @@
   <title>BTC Thermal Dashboard</title>
 
   <!-- React -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+ <script type="text/babel">
 
-  <style>
-    body {
-      margin:0;
-      background:#0b0f14;
-      color:white;
-      font-family:sans-serif;
-    }
-  </style>
-</head>
-<body>
+const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
 
-<div id="root"></div>
+const DEFAULT = {
+  btcPrice: 0,
+  mayerMultiple: 0,
+  mvrvPct: 0,
+  bullBear30d: 0,
+  bullBear365d: 0,
+  sharpeShort: 0
+};
 
-<script type="text/babel">
+function BTCThermal() {
+  const [vals, setVals] = React.useState(DEFAULT);
+  const [status, setStatus] = React.useState("Chargement...");
+
+  React.useEffect(() => {
+    fetch(DATA_URL + "?t=" + Date.now())
+      .then(r => r.json())
+      .then(d => {
+        setVals(d);
+        setStatus("Live OK");
+      })
+      .catch(() => setStatus("Erreur chargement"));
+  }, []);
+
+  const score =
+    (
+      vals.mvrvPct +
+      (vals.mayerMultiple * 50) +
+      (vals.bullBear30d * 100) +
+      (vals.sharpeShort)
+    ) / 4;
+
+  const color =
+    score < 0 ? "#ff4d4d" :
+    score < 20 ? "#ffa500" :
+    "#40c057";
+
+  return (
+    <div style={{padding:20}}>
+      <h1>BTC Thermal Dashboard</h1>
+      <p>Status: {status}</p>
+
+      <h2>Prix BTC : ${vals.btcPrice}</h2>
+
+      <div style={{
+        marginTop:20,
+        padding:20,
+        background:"#111",
+        borderRadius:10
+      }}>
+        <h3>Score thermique</h3>
+        <div style={{
+          fontSize:40,
+          color:color
+        }}>
+          {score.toFixed(1)}
+        </div>
+      </div>
+
+      <h3>Indicateurs</h3>
+      <ul>
+        <li>MVRV % : {vals.mvrvPct}</li>
+        <li>Mayer : {vals.mayerMultiple}</li>
+        <li>BullBear 30d : {vals.bullBear30d}</li>
+        <li>BullBear 365d : {vals.bullBear365d}</li>
+        <li>Sharpe : {vals.sharpeShort}</li>
+      </ul>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root"))
+  .render(<BTCThermal />);
+
+</script>
 
 // URL du fichier généré par ton pipeline GitHub
 const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
