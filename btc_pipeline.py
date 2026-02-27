@@ -48,8 +48,7 @@ def compute_sharpe(prices):
 
 # -------- SAVE --------
 def save_dashboard(data):
-    os.makedirs("data", exist_ok=True)
-    with open("data/btc_data.json", "w") as f:
+    with open("btc_dashboard.json", "w") as f:
         json.dump(data, f, indent=2)
 
 # -------- MAIN --------
@@ -68,7 +67,7 @@ def run():
     }
 
     save_dashboard(dashboard)
-    print("btc_data.json created")
+print("btc_dashboard.json updated")
 
 if __name__ == "__main__":
     run()
