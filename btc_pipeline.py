@@ -63,6 +63,9 @@ def compute_mayer(prices):
     return float(prices.iloc[-1] / ma200)
 
 def compute_bullbear(prices, days):
+    # sécurité : si pas assez de données
+    if len(prices) < days:
+        return 0
     return float((prices.iloc[-1] / prices.iloc[-days]) - 1)
 
 def compute_sharpe(prices):
