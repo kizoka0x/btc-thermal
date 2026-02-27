@@ -123,8 +123,24 @@ def proxy_utxo(prices):
     return compute_mvrv_pct(prices)
 
 # Whale proxy (volatilité volume impossible gratuitement → prix proxy)
-def proxy_whales(prices):
-    return int(prices.iloc[-1] / 1000)
+# -------- WHALES (CoinGlass free) --------
+def get_whales_coinglass():
+    url = "https://open-api.coinglass.com/public/v2/bitcoin/addresses"
+    headers = {
+        "accept": "application/json",
+        "coinglassSecret": ""
+    }
+
+    try:
+        r = requests.get(url, headers=headers, timeout=20)
+        data = r.json()
+
+        # variation des wallets 1000+ BTC (proxy accumulation)
+        value = data["data"]["addresses_1000"]
+        return int(value)
+
+    except:
+        return 0
 
 # -------------------------
 # MAIN
@@ -166,7 +182,7 @@ def run():
         "lthNupl": 0,
         "sthNupl": 0,
         "utxoRatio": 0,
-        "whales1k10k": 0
+        "whales1k10k": get_whales_coinglass()
     }
 
     save_dashboard(dashboard)
