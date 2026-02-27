@@ -253,14 +253,15 @@ def run():
         "etfNetflow": etf_flow,
         "usdtSma": usdt_sma,
         "futuresPower": get_futures_power(),
+        
         # SOPR proxy = prix vs moyenne 7 jours
         "soprRatio": sopr_real if sopr_real else compute_sopr(prices),
 
        # NUPL proxies = performance cycle
-       "lthNupl": lth_nupl_real if lth_nupl_real else compute_nupl(prices, 365),
-       "sthNupl": sth_nupl_real if sth_nupl_real else compute_nupl(prices, 30),
-       
-
+        "lthNupl": lth_nupl_real if lth_nupl_real not in [None, 0] else compute_nupl(prices, 365),
+        "sthNupl": sth_nupl_real if sth_nupl_real not in [None, 0] else compute_nupl(prices, 30),
+        
+        
        # UTXO proxy = % en profit
        "utxoRatio": utxo_real if utxo_real else compute_utxo_ratio(prices),
 
