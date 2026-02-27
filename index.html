@@ -22,15 +22,23 @@ function BTCThermal() {
   const [vals, setVals] = React.useState(DEFAULT);
   const [status, setStatus] = React.useState("Chargement...");
 
-  React.useEffect(() => {
+React.useEffect(() => {
+  function load() {
     fetch(DATA_URL + "?t=" + Date.now())
       .then(r => r.json())
       .then(d => {
-        setVals(d);
+        setVals(d);          // IMPORTANT : setVals, pas setData
         setStatus("Live OK");
       })
       .catch(() => setStatus("Erreur chargement"));
-  }, []);
+  }
+
+  load(); // chargement immédiat
+
+  const interval = setInterval(load, 5 * 60 * 1000); // toutes les 5 minutes
+
+  return () => clearInterval(interval);
+}, []);
 
   const score =
     (
