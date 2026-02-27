@@ -146,55 +146,8 @@ function SectionRow({ label }) {
   );
 }
 
-// ─── DROP ZONE ───────────────────────────────────────────────────────────
-function DropZone({ onFiles, loading }) {
-  const [drag, setDrag] = useState(false);
-  const ref = useRef();
 
-  const handle = useCallback(files => {
-    const imgs = Array.from(files).filter(f => f.type.startsWith("image/"));
-    if (imgs.length) onFiles(imgs);
-  }, [onFiles]);
 
-  return (
-    <div
-      onClick={() => ref.current.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files); }}
-      style={{
-        border:`2px dashed ${drag ? "#58a6ff" : loading ? "#f39c12" : "#1a2030"}`,
-        borderRadius:12, padding:"28px 20px", textAlign:"center", cursor:"pointer",
-        background: drag ? "rgba(88,166,255,.06)" : loading ? "rgba(243,156,18,.04)" : "rgba(255,255,255,.015)",
-        transition:"all .2s"
-      }}>
-      <input ref={ref} type="file" accept="image/*" multiple style={{display:"none"}}
-        onChange={e => handle(e.target.files)} />
-      <div style={{fontSize:28,marginBottom:8}}>{loading ? "⏳" : drag ? "📂" : "📸"}</div>
-      <div style={{fontSize:13,fontWeight:600,color:loading?"#ffa94d":drag?"#58a6ff":"#c9d1d9",marginBottom:4}}>
-        {loading ? "Analyse IA en cours…" : drag ? "Déposer ici" : "Glisser / Cliquer pour ajouter des screenshots"}
-      </div>
-      <div style={{fontSize:11,color:"#4a5568"}}>
-        {loading ? "Claude lit vos graphiques CryptoQuant" : "PNG, JPG acceptés · Plusieurs captures à la fois · Mise à jour automatique"}
-      </div>
-    </div>
-  );
-}
-
-// ─── EXTRACTION STATUS ────────────────────────────────────────────────────
-function ExtractionLog({ log }) {
-  if (!log.length) return null;
-  return (
-    <div style={{marginTop:12,background:"#0d1117",border:"1px solid #1a2030",borderRadius:8,padding:12,maxHeight:140,overflowY:"auto"}}>
-      <div style={{fontFamily:"monospace",fontSize:9,color:"rgba(88,166,255,.6)",letterSpacing:2,marginBottom:8}}>── LOG D'EXTRACTION IA</div>
-      {log.map((l,i) => (
-        <div key={i} style={{fontSize:11,color:l.ok?"#69db7c":l.warn?"#ffd166":"#ff6b6b",marginBottom:3,fontFamily:"monospace"}}>
-          {l.ok?"✓":l.warn?"⚠":"✗"} {l.msg}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────
 function BTCThermalAI() {
@@ -219,7 +172,51 @@ function BTCThermalAI() {
       } catch {}
     })();
   }, []);
+// ── SYNC AVEC btc_dashboard.json (incrémentation modèle) ──
+useEffect(() => {
+  const fetchDashboard = async () => {
+    try {
+      const res = await fetch("btc_dashboard.json?cache=" + Date.now());
+      const data = await res.json();
 
+      // On part des valeurs actuelles (important)
+      setVals(prev => {
+        const updated = { ...prev };
+
+        if (data.price != null)            updated.btcPrice = data.price;
+        if (data.mayer != null)            updated.mayerMultiple = data.mayer;
+        if (data.mvrv != null)             updated.mvrvPct = data.mvrv;
+        if (data.bullbear_30d != null)     updated.bullBear30d = data.bullbear_30d;
+        if (data.bullbear_365d != null)    updated.bullBear365d = data.bullbear_365d;
+        if (data.sharpe != null)           updated.sharpeShort = data.sharpe;
+        if (data.etf_flow_30d != null)     updated.etfNetflow = data.etf_flow_30d;
+        if (data.usdt_sma30 != null)       updated.usdtSma = data.usdt_sma30;
+        if (data.futures_power != null)    updated.futuresPower = data.futures_power;
+        if (data.ntv_sell_count != null)   updated.ntvSellCount = data.ntv_sell_count;
+        if (data.whales_1k_10k != null)    updated.whales1k10k = data.whales_1k_10k;
+
+        return updated;
+      });
+
+      // Mise à jour de l'heure si présente
+      if (data.last_update) {
+        setLastUpdate(data.last_update);
+      }
+
+      console.log("btc_dashboard.json synchronisé");
+
+    } catch (e) {
+      console.log("Erreur chargement btc_dashboard.json", e);
+    }
+  };
+
+  fetchDashboard();
+
+  // refresh toutes les 5 minutes
+  const interval = setInterval(fetchDashboard, 300000);
+
+  return () => clearInterval(interval);
+}, []);
   const saveToStorage = async (newVals) => {
     const now = new Date().toLocaleString("fr-FR");
     try {
@@ -418,17 +415,12 @@ function BTCThermalAI() {
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:16,paddingBottom:14,borderBottom:`1px solid ${BORDER}`}}>
         <div>
           <div style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:"#fff",letterSpacing:-.5}}>⬡ BTC ON-CHAIN — TABLEAU THERMIQUE AI</div>
-          <div style={{fontSize:11,color:MUTED,marginTop:2}}>Mise à jour automatique par analyse de screenshots · CryptoQuant</div>
+          <div style={{fontSize:11,color:MUTED,marginTop:2}}>Mise à jour automatique via pipeline on-chain propriétaire</div>
           {lastUpdate && <div style={{fontSize:10,color:"#2ecc71",marginTop:2}}>✓ Dernière mise à jour : {lastUpdate}</div>}
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
           <div style={{fontFamily:"monospace",fontSize:24,fontWeight:700,color:"#ffe066"}}>${(vals.btcPrice/1000).toFixed(1)}K</div>
           <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>setManualMode(m=>!m)} style={{
-              background:manualMode?"rgba(88,166,255,.15)":PANEL,color:manualMode?"#74c0fc":"#c9d1d9",
-              border:`1px solid ${manualMode?"#58a6ff":BORDER}`,borderRadius:6,padding:"5px 12px",
-              fontSize:10,cursor:"pointer",fontFamily:"monospace",letterSpacing:.8}}>
-              ✏ {manualMode?"FERMER":"MANUEL"}
             </button>
             <button onClick={()=>setShowHistory(h=>!h)} style={{
               background:PANEL,color:"#c9d1d9",border:`1px solid ${BORDER}`,borderRadius:6,
@@ -458,55 +450,9 @@ function BTCThermalAI() {
         </div>
       )}
 
-      {/* AI UPLOAD ZONE */}
-      <div style={{marginBottom:16}}>
-        <div style={{fontFamily:"monospace",fontSize:9,color:"rgba(88,166,255,.7)",textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>── 📸 MISE À JOUR AUTOMATIQUE PAR SCREENSHOTS</div>
-        <DropZone onFiles={extractFromScreenshots} loading={loading} />
-        <ExtractionLog log={log} />
-        {previews.length>0 && (
-          <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
-            {previews.map((p,i)=>(
-              <div key={i} style={{position:"relative"}}>
-                <img src={p} alt="" style={{height:60,borderRadius:6,border:`1px solid ${BORDER}`,objectFit:"cover"}} />
-              </div>
-            ))}
-            <div style={{display:"flex",alignItems:"center",fontSize:10,color:MUTED}}>← Screenshots analysés</div>
-          </div>
-        )}
-      </div>
+    
 
-      {/* MANUAL OVERRIDE */}
-      {manualMode && (
-        <div style={{marginBottom:16,background:PANEL,border:`1px solid rgba(88,166,255,.2)`,borderRadius:10,padding:14,borderLeft:"3px solid #58a6ff"}}>
-          <div style={{fontFamily:"monospace",fontSize:9,color:"rgba(88,166,255,.7)",letterSpacing:2,marginBottom:12}}>── SAISIE MANUELLE (remplacement des valeurs)</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
-            {[
-              ["Prix BTC ($)","btcPrice",100],["ETF Netflow (B$)","etfNetflow",.5],["USDT SMA30 (B$)","usdtSma",.1],
-              ["Futures Power (%)","futuresPower",1],["Bull/Bear 30d MA","bullBear30d",.05],["Bull/Bear 365d MA","bullBear365d",.05],
-              ["SOPR Ratio","soprRatio",.01],["STH NUPL","sthNupl",.01],["LTH NUPL","lthNupl",.01],
-              ["UTXO Ratio","utxoRatio",.5],["MVRV Percentile (%)","mvrvPct",1],["Mayer Multiple","mayerMultiple",.01],
-              ["Sharpe Ratio CT","sharpeShort",1],["Baleines 1k-10k (BTC)","whales1k10k",1000],
-            ].map(([label,key,step])=>(
-              <div key={key}>
-                <div style={{fontSize:9,color:MUTED,letterSpacing:.8,marginBottom:3,textTransform:"uppercase"}}>{label}</div>
-                <input type="number" step={step} defaultValue={vals[key]}
-                  onChange={e=>setDraft(d=>({...d,[key]:parseFloat(e.target.value)||0}))}
-                  style={{width:"100%",background:BG,color:"#c9d1d9",border:`1px solid ${BORDER}`,borderRadius:4,padding:"5px 8px",fontSize:11}} />
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:12,display:"flex",gap:8}}>
-            <select value={draft.ntvSellCount??vals.ntvSellCount} onChange={e=>setDraft(d=>({...d,ntvSellCount:Number(e.target.value)}))}
-              style={{background:BG,color:"#c9d1d9",border:`1px solid ${BORDER}`,borderRadius:4,padding:"5px 8px",fontSize:11}}>
-              {[{v:2,l:"Double Sell Signal"},{v:1,l:"Sell Signal"},{v:0,l:"Neutre"},{v:-1,l:"Buy Signal"},{v:-2,l:"Double Buy Signal"}].map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
-            <button onClick={async()=>{const u={...vals,...draft};setVals(u);await saveToStorage(u);setManualMode(false);setDraft({});}}
-              style={{background:"#1F3864",color:"#74c0fc",border:"1px solid #1F6FEB",borderRadius:6,padding:"6px 16px",fontSize:11,cursor:"pointer",fontFamily:"monospace"}}>
-              ✓ APPLIQUER
-            </button>
-          </div>
-        </div>
-      )}
+     
 
       {/* SCORE CARDS */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
@@ -614,7 +560,7 @@ function BTCThermalAI() {
       </div>
 
       <div style={{marginTop:14,paddingTop:10,borderTop:`1px solid ${BORDER}`,fontSize:10,color:MUTED,textAlign:"center",fontStyle:"italic"}}>
-        Analyse IA : Claude Sonnet · Données : CryptoQuant · Ce tableau ne constitue pas un conseil financier
+        Sources : Pipeline On-Chain propriétaire · Données agrégées (Glassnode / Exchanges / On-chain)
       </div>
     </div>
   );
