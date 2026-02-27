@@ -1,117 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>BTC Thermal Dashboard</title>
+  <meta charset="UTF-8" />
+  <title>BTC Thermal AI</title>
 
   <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <!-- Babel pour lire le JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
     body {
       margin: 0;
-      background: #0b0f14;
-      color: white;
-      font-family: sans-serif;
+      background: #0b0f19;
+      font-family: Arial;
     }
   </style>
 </head>
 <body>
+  <div id="root"></div>
 
-<div id="root"></div>
-
-<script type="text/babel">
-
-// ==========================
-// 1) Adresse du JSON GitHub
-// ==========================
-const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
-
-// ==========================
-// 2) Valeurs par défaut
-// ==========================
-const DEFAULT = {
-  btcPrice: 0,
-  mayerMultiple: 0,
-  mvrvPct: 0,
-  bullBear30d: 0,
-  bullBear365d: 0,
-  sharpeShort: 0,
-
-  etfNetflow: 0,
-  usdtSma: 0,
-  futuresPower: 0,
-  ntvSellCount: 0,
-  whales1k10k: 0
-};
-
-
-// ==========================
-// 3) Application
-// ==========================
-function App() {
-
-  const [data, setData] = React.useState(DEFAULT);
-  const [status, setStatus] = React.useState("Chargement...");
-
-  React.useEffect(() => {
-
-    function load() {
-  fetch(DATA_URL + "?t=" + Date.now())
-        .then(response => response.json())
-        .then(json => {
-          setData(json);
-          setStatus("Live OK");
-          console.log("Live:", json);
-        })
-        .catch(() => {
-          setStatus("Erreur chargement");
-        });
-    }
-
-    // Chargement au démarrage
-    load();
-
-    // Recharge toutes les 5 minutes
-    const interval = setInterval(load, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-
-  }, []);
-
-
-  return (
-    <div style={{padding:20}}>
-      <h1>BTC Thermal Dashboard</h1>
-
-      <p>Status : {status}</p>
-      <p>Dernière maj GitHub : {data.updated}</p>
-
-      <h2>Prix BTC : ${data.btcPrice}</h2>
-
-      <p>Mayer : {data.mayerMultiple}</p>
-      <p>MVRV % : {data.mvrvPct}</p>
-      <p>BullBear 30j : {data.bullBear30d}</p>
-      <p>BullBear 365j : {data.bullBear365d}</p>
-      <p>Sharpe : {data.sharpeShort}</p>
-      <p>ETF Flow 30j : {data.etfNetflow}</p>
-      <p>USDT SMA30 : {data.usdtSma}</p>
-      <p>Futures Power : {data.futuresPower}</p>
-      <p>NTV Sell Count : {data.ntvSellCount}</p>
-      <p>Whales 1k-10k : {data.whales1k10k}</p>
-    </div>
-  );
-}
-
-
-// ==========================
-// 4) Lancement
-// ==========================
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-
-</script>
-
+  <!-- Charger ton fichier JSX -->
+  <script type="text/babel" src="btc_thermal_ai.jsx"></script>
 </body>
 </html>
