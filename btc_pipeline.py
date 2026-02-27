@@ -282,7 +282,11 @@ def run():
 
       # Whales proxy (si API échoue → fallback)
        "whales1k10k": get_whales_coinglass() or int(prices.iloc[-1] / 1000)
+        
     }
+
+        # Calcul du Thermal Score
+    dashboard["thermalScore"] = compute_thermal_score(dashboard)
 
     save_dashboard(dashboard)
     print("btc_dashboard.json updated")
