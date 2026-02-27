@@ -29,7 +29,6 @@
 // ==========================
 const DATA_URL = "https://raw.githubusercontent.com/kizoka0x/btc-thermal/main/btc_dashboard.json";
 
-
 // ==========================
 // 2) Valeurs par défaut
 // ==========================
@@ -59,8 +58,8 @@ function App() {
 
   React.useEffect(() => {
 
-    function loadData() {
-      fetch(DATA_URL + "?t=" + Date.now())
+    function load() {
+  fetch(DATA_URL + "?t=" + Date.now())
         .then(response => response.json())
         .then(json => {
           setData(json);
@@ -73,10 +72,10 @@ function App() {
     }
 
     // Chargement au démarrage
-    loadData();
+    load();
 
     // Recharge toutes les 5 minutes
-    const interval = setInterval(loadData, 5 * 60 * 1000);
+    const interval = setInterval(load, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
 
