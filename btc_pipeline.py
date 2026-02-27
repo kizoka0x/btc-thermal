@@ -114,6 +114,7 @@ def proxy_whales(prices):
 def run():
     prices = get_btc_history()
     btc_price = get_btc_price()
+    usdt_sma = get_usdt_sma30()
 
     # Proxies gratuits et stables
     ntv_sell_count = float((prices.pct_change().tail(7) < 0).sum())
@@ -140,7 +141,7 @@ def run():
 
         # Proxies neutres pour indicateurs on-chain indisponibles
         "etfNetflow": 0,
-        "usdtSma": 0,
+        "usdtSma": usdt_sma,
         "futuresPower": 50,
         "soprRatio": 1,
         "lthNupl": 0,
