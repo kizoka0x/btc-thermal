@@ -1,4 +1,33 @@
-const { useState, useCallback, useRef, useEffect } = React;
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await fetch("btc_dashboard.json");
+      const data = await res.json();
+
+      setVals({
+        btcPrice: data.price,
+        mayerMultiple: data.mayer,
+        mvrvPct: data.mvrv,
+        bullBear30d: data.bullbear_30d,
+        bullBear365d: data.bullbear_365d,
+        sharpeShort: data.sharpe,
+        etfNetflow: data.etf_flow_30d,
+        usdtSma: data.usdt_sma30,
+        futuresPower: data.futures_power,
+        ntvSellCount: data.ntv_sell_count,
+        whales1k10k: data.whales_1k_10k
+      });
+
+      setLastUpdate(data.last_update);
+    } catch (e) {
+      console.log("Erreur chargement JSON", e);
+    }
+  };
+
+  fetchData();
+  const interval = setInterval(fetchData, 300000); // 5 min
+  return () => clearInterval(interval);
+}, []);
 
 // ─── THERMAL SCORE CALCULATORS ────────────────────────────────────────────
 const calcETF    = v => v<=-25?{n:0,c:1,m:2,l:5}:v<=-15?{n:1,c:1,m:2,l:5}:v<=-8?{n:2,c:2,m:3,l:6}:v<=-2?{n:3,c:3,m:4,l:6}:v<=0?{n:4,c:4,m:5,l:7}:v<=5?{n:6,c:6,m:6,l:7}:v<=15?{n:7,c:7,m:7,l:8}:{n:9,c:8,m:8,l:8};
