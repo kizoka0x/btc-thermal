@@ -24,7 +24,7 @@ function BTCThermalAI() {
 
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  // ===== LOAD DASHBOARD (auto refresh) =====
+  // ===== LOAD DASHBOARD =====
   useEffect(() => {
 
     const loadData = async () => {
@@ -44,46 +44,62 @@ function BTCThermalAI() {
         setLastUpdate(data.updated || new Date().toLocaleString());
 
       } catch (err) {
-        console.error("Erreur chargement dashboard:", err);
+        console.error("Dashboard error:", err);
       }
     };
 
     loadData();
-    const interval = setInterval(loadData, 300000); // 5 min
-
+    const interval = setInterval(loadData, 300000);
     return () => clearInterval(interval);
 
   }, []);
 
-  // ===== THERMAL SCORE (0–10) =====
-  let score = 0;
+  // ===== SCORES =====
 
-  if (vals.mvrv < 10) score += 2;
-  if (vals.mayer < 0.8) score += 2;
-  if (vals.sopr < 1) score += 2;
-  if (vals.sharpe < -20) score += 2;
-  if (vals.whales > 0) score += 2;
+  // CT (structure marché)
+  let scoreCT = 0;
+  if (vals.sopr < 1) scoreCT += 1;
+  if (vals.whales > 0) scoreCT += 1;
 
-  if (score > 10) score = 10;
+  // MT (stress marché)
+  let scoreMT = 0;
+  if (vals.mayer < 0.9) scoreMT += 1;
+  if (vals.sharpe < -10) scoreMT += 1;
 
-  const scorePct = score * 10;
+  // LT (zones d'accumulation)
+  let scoreLT = 0;
+  if (vals.mvrv < 20) scoreLT += 2;
+  if (vals.mayer < 0.8) scoreLT += 2;
+  if (vals.sharpe < -20) scoreLT += 2;
+
+  const totalScore = scoreCT + scoreMT + scoreLT;
+
+  // ===== BOTTOM PROBABILITY =====
+  const bottomProb = Math.min(100, totalScore * 10);
 
   // ===== MARKET REGIME =====
-  let regime = "NEUTRE";
-  let regimeColor = YELLOW;
+  let regime = "Distribution";
+  let regimeColor = RED;
 
-  if (score >= 8) {
-    regime = "CAPITULATION / BOTTOM ZONE";
+  if (bottomProb > 70) {
+    regime = "Bottom Zone / Accumulation";
     regimeColor = GREEN;
-  } else if (score >= 5) {
-    regime = "BEAR MARKET";
+  } else if (bottomProb > 40) {
+    regime = "Bear Market";
     regimeColor = ORANGE;
-  } else if (score <= 3) {
-    regime = "DISTRIBUTION";
-    regimeColor = RED;
   }
 
-  // ===== COMPONENT STYLE =====
+  // ===== ALERT SYSTEM =====
+  let alert = null;
+
+  if (bottomProb > 80) {
+    alert = { text: "⚡ STRONG BUY ZONE", color: GREEN };
+  } else if (bottomProb > 60) {
+    alert = { text: "Accumulation Phase", color: YELLOW };
+  } else if (bottomProb < 20) {
+    alert = { text: "Risk of Distribution", color: RED };
+  }
+
   const card = {
     background: PANEL,
     border: `1px solid ${BORDER}`,
@@ -104,7 +120,7 @@ function BTCThermalAI() {
       }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>
-            BTC ON-CHAIN — PRO DESK
+            BTC ON-CHAIN — ELITE DESK
           </div>
           {lastUpdate && (
             <div style={{ fontSize: 12, color: "#22c55e" }}>
@@ -113,19 +129,27 @@ function BTCThermalAI() {
           )}
         </div>
 
-        <div style={{
-          fontSize: 34,
-          fontWeight: 700,
-          color: YELLOW
-        }}>
+        <div style={{ fontSize: 34, fontWeight: 700, color: YELLOW }}>
           ${(vals.btcPrice / 1000).toFixed(1)}K
         </div>
       </div>
 
-      {/* THERMAL SCORE */}
+      {/* ALERT */}
+      {alert && (
+        <div style={{
+          ...card,
+          borderLeft: `4px solid ${alert.color}`,
+          color: alert.color,
+          fontWeight: 600
+        }}>
+          {alert.text}
+        </div>
+      )}
+
+      {/* BOTTOM PROBABILITY */}
       <div style={card}>
         <div style={{ marginBottom: 6 }}>
-          Thermal Score : {score} / 10
+          Bottom Probability : {bottomProb}%
         </div>
 
         <div style={{
@@ -136,7 +160,7 @@ function BTCThermalAI() {
           marginBottom: 10
         }}>
           <div style={{
-            width: scorePct + "%",
+            width: bottomProb + "%",
             height: "100%",
             background: regimeColor
           }} />
@@ -147,37 +171,36 @@ function BTCThermalAI() {
         </div>
       </div>
 
-      {/* METRICS GRID */}
+      {/* SCORES */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
+        gap: 12,
+        marginBottom: 16
+      }}>
+        <Score label="Short Term" value={scoreCT} max={2} />
+        <Score label="Mid Term" value={scoreMT} max={2} />
+        <Score label="Long Term" value={scoreLT} max={6} />
+      </div>
+
+      {/* METRICS */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
         gap: 12
       }}>
-
         <Metric label="MVRV %" value={vals.mvrv} />
         <Metric label="Mayer" value={vals.mayer} />
         <Metric label="SOPR" value={vals.sopr} />
-        <Metric label="Sharpe CT" value={vals.sharpe} />
-        <Metric label="Whales 1k-10k" value={vals.whales} />
-
-      </div>
-
-      {/* CONDITIONS */}
-      <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ marginBottom: 8 }}>Bottom Conditions</div>
-
-        <Condition ok={vals.mvrv < 10} text="MVRV < 10%" />
-        <Condition ok={vals.mayer < 0.8} text="Mayer < 0.8" />
-        <Condition ok={vals.sopr < 1} text="SOPR < 1" />
-        <Condition ok={vals.sharpe < -20} text="Sharpe < -20" />
-        <Condition ok={vals.whales > 0} text="Whales accumulating" />
+        <Metric label="Sharpe" value={vals.sharpe} />
+        <Metric label="Whales" value={vals.whales} />
       </div>
 
     </div>
   );
 }
 
-// ===== SMALL COMPONENTS =====
+// ===== COMPONENTS =====
 function Metric({ label, value }) {
   return (
     <div style={{
@@ -194,14 +217,30 @@ function Metric({ label, value }) {
   );
 }
 
-function Condition({ ok, text }) {
+function Score({ label, value, max }) {
+  const pct = (value / max) * 100;
   return (
     <div style={{
-      color: ok ? "#22c55e" : "#ef4444",
-      fontSize: 14,
-      marginBottom: 6
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 10,
+      padding: 12
     }}>
-      {ok ? "✓" : "✕"} {text}
+      <div style={{ fontSize: 11, color: "#94a3b8" }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 600 }}>{value} / {max}</div>
+      <div style={{
+        height: 6,
+        background: "#1e293b",
+        marginTop: 6,
+        borderRadius: 4,
+        overflow: "hidden"
+      }}>
+        <div style={{
+          width: pct + "%",
+          height: "100%",
+          background: "#22c55e"
+        }} />
+      </div>
     </div>
   );
 }
