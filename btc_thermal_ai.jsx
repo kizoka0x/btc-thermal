@@ -1,6 +1,6 @@
 const { useState, useEffect } = React;
 
-function BTCQuantDesk() {
+function BTCFundDesk() {
 
   const PANEL = "#0f172a";
   const BORDER = "#1e293b";
@@ -14,7 +14,7 @@ function BTCQuantDesk() {
   const [d, setD] = useState({});
   const [lastUpdate, setLastUpdate] = useState("");
 
-  // ===== LOAD DASHBOARD =====
+  // ─── LOAD DASHBOARD ─────────────────────────
   useEffect(() => {
 
     const load = async () => {
@@ -24,9 +24,8 @@ function BTCQuantDesk() {
 
         setD(data);
         setLastUpdate(data.updated || "");
-
       } catch (e) {
-        console.error("Dashboard load error:", e);
+        console.error("Erreur dashboard:", e);
       }
     };
 
@@ -38,73 +37,38 @@ function BTCQuantDesk() {
 
   const price = d.btcPrice || 0;
 
-  // ===== QUANT MODEL =====
+  // ─── MODELE FUND (cycle) ─────────────────────
+  let bottom = 0;
+  let top = 0;
 
-  let bottomScore = 0;
-  let topScore = 0;
+  if (d.mvrvPct < 0.3) bottom += 2;
+  if (d.mayerMultiple < 0.9) bottom += 2;
+  if (d.sharpeShort < -0.5) bottom += 1;
+  if (d.soprRatio < 1) bottom += 1;
+  if (d.sthNupl < 0.1) bottom += 1;
+  if (d.etfNetflow < 0) bottom += 1;
 
-  // Bottom logic (capitulation / early cycle)
-  if (d.mvrvPct < 0.3) bottomScore += 2;
-  if (d.mayerMultiple < 0.9) bottomScore += 2;
-  if (d.sharpeShort < -0.5) bottomScore += 1;
-  if (d.soprRatio < 1) bottomScore += 1;
-  if (d.sthNupl < 0.1) bottomScore += 1;
-  if (d.etfNetflow < 0) bottomScore += 1;
+  if (d.mvrvPct > 0.8) top += 2;
+  if (d.mayerMultiple > 2) top += 2;
+  if (d.soprRatio > 1.05) top += 1;
+  if (d.lthNupl > 0.6) top += 1;
+  if (d.futuresPower > 70) top += 1;
+  if (d.etfNetflow > 0) top += 1;
 
-  // Top logic (euphoria / distribution)
-  if (d.mvrvPct > 0.8) topScore += 2;
-  if (d.mayerMultiple > 2.0) topScore += 2;
-  if (d.soprRatio > 1.05) topScore += 1;
-  if (d.lthNupl > 0.6) topScore += 1;
-  if (d.futuresPower > 70) topScore += 1;
-  if (d.etfNetflow > 0) topScore += 1;
-
-  const bottomProb = Math.min(100, bottomScore * 15);
-  const topProb = Math.min(100, topScore * 15);
-
+  const bottomProb = Math.min(100, bottom * 15);
+  const topProb = Math.min(100, top * 15);
   const marketScore = Math.max(0, Math.min(100, 50 + bottomProb - topProb));
 
-  // ===== CYCLE PHASE =====
-
+  // Phase
   let phase = "Neutral";
   let phaseColor = MUTED;
-  let outlook = "No strong edge";
 
-  if (bottomProb > 60) {
-    phase = "Accumulation";
-    phaseColor = GREEN;
-    outlook = "Early cycle — smart money buying";
-  }
-  else if (marketScore > 65) {
-    phase = "Expansion";
-    phaseColor = GREEN;
-    outlook = "Bull trend intact";
-  }
-  else if (topProb > 60) {
-    phase = "Distribution";
-    phaseColor = ORANGE;
-    outlook = "Late cycle risk building";
-  }
-  else if (topProb > 80) {
-    phase = "Cycle Top Risk";
-    phaseColor = RED;
-    outlook = "High probability macro top";
-  }
+  if (bottomProb > 60) { phase = "Accumulation"; phaseColor = GREEN; }
+  else if (marketScore > 65) { phase = "Expansion"; phaseColor = GREEN; }
+  else if (topProb > 60) { phase = "Distribution"; phaseColor = ORANGE; }
+  else if (topProb > 80) { phase = "Cycle Top Risk"; phaseColor = RED; }
 
-  // ===== 4Y CYCLE POSITION (approx) =====
-  // Halving April 2024 → cycle top expected 2025–2026
-  const year = new Date().getFullYear();
-  const cycleProgress = Math.min(100, Math.max(0, (year - 2024) * 40));
-
-  // ===== PRICE ZONES (thermal based) =====
-  const zones = [
-    { label: "Deep Value", v: price * 0.6 },
-    { label: "Institutional Accumulation", v: price * 0.8 },
-    { label: "Fair Value", v: price },
-    { label: "Distribution Zone", v: price * 1.5 },
-    { label: "Blow-off Risk", v: price * 2 }
-  ];
-
+  // ─── UI helpers ─────────────────────────
   const card = {
     background: PANEL,
     border: `1px solid ${BORDER}`,
@@ -113,6 +77,22 @@ function BTCQuantDesk() {
     marginBottom: 16
   };
 
+  const sectionTitle = {
+    fontSize: 13,
+    color: MUTED,
+    marginBottom: 10,
+    fontWeight: 600
+  };
+
+  const row = {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 6,
+    fontFamily: "monospace"
+  };
+
+  const fmt = v => (v === undefined || v === null) ? "-" : Number(v).toFixed(3);
+
   return (
     <div style={{ padding: 24, color: TEXT, fontFamily: "Arial" }}>
 
@@ -120,7 +100,7 @@ function BTCQuantDesk() {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>
-            BTC QUANT DESK — CYCLE ENGINE
+            BTC FUND+ DASHBOARD
           </div>
           <div style={{ fontSize: 12, color: GREEN }}>
             Update : {lastUpdate}
@@ -138,68 +118,49 @@ function BTCQuantDesk() {
         <div style={{ fontSize: 22, fontWeight: 700, color: phaseColor }}>
           {phase}
         </div>
-        <div style={{ fontSize: 12, color: MUTED }}>
-          {outlook}
+        <div style={{ marginTop: 8, fontFamily: "monospace" }}>
+          Market Score : {Math.round(marketScore)} | Bottom : {bottomProb}% | Top : {topProb}%
         </div>
       </div>
 
-      {/* SCORES */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-        <Score label="Market Score" value={marketScore} />
-        <Score label="Bottom Prob" value={bottomProb} />
-        <Score label="Top Prob" value={topProb} />
-      </div>
-
-      {/* CYCLE POSITION */}
+      {/* ── Flux & Liquidité */}
       <div style={card}>
-        <div style={{ fontSize: 12, color: MUTED }}>4Y Cycle Progress</div>
-        <div style={{ fontSize: 24, fontWeight: 700 }}>
-          {cycleProgress}%
-        </div>
+        <div style={sectionTitle}>── Flux & Liquidité</div>
+        <div style={row}><span>ETF Netflow 30D</span><span>{fmt(d.etfNetflow)}</span></div>
+        <div style={row}><span>USDT Stablecoin SMA(30)</span><span>{fmt(d.usdtSma)}</span></div>
+        <div style={row}><span>Net Taker Volume</span><span>{fmt(d.ntvSellCount)}</span></div>
       </div>
 
-      {/* THERMAL SCORE */}
+      {/* ── Dérivés */}
       <div style={card}>
-        <div style={{ fontSize: 12, color: MUTED }}>Thermal Score (dashboard)</div>
-        <div style={{ fontSize: 24, fontWeight: 700 }}>
-          {Number(d.thermalScore || 0).toFixed(2)}
-        </div>
+        <div style={sectionTitle}>── Dérivés & Structure de marché</div>
+        <div style={row}><span>Futures Power</span><span>{fmt(d.futuresPower)}</span></div>
+        <div style={row}><span>Bull/Bear 30D</span><span>{fmt(d.bullBear30d)}</span></div>
+        <div style={row}><span>Bull/Bear 365D</span><span>{fmt(d.bullBear365d)}</span></div>
       </div>
 
-      {/* ZONES */}
+      {/* ── Holders */}
       <div style={card}>
-        <div style={{ marginBottom: 10, color: MUTED }}>Cycle Price Zones</div>
-        {zones.map((z, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span>{z.label}</span>
-            <span style={{ fontFamily: "monospace" }}>
-              ${(z.v / 1000).toFixed(1)}K
-            </span>
-          </div>
-        ))}
+        <div style={sectionTitle}>── Profitabilité & Comportement</div>
+        <div style={row}><span>SOPR</span><span>{fmt(d.soprRatio)}</span></div>
+        <div style={row}><span>STH NUPL</span><span>{fmt(d.sthNupl)}</span></div>
+        <div style={row}><span>LTH NUPL</span><span>{fmt(d.lthNupl)}</span></div>
+        <div style={row}><span>UTXO P/L Ratio</span><span>{fmt(d.utxoRatio)}</span></div>
+        <div style={row}><span>Whales 1k–10k</span><span>{fmt(d.whales1k10k)}</span></div>
       </div>
 
-    </div>
-  );
-}
-
-function Score({ label, value }) {
-  const color = value > 70 ? "#22c55e" : value > 40 ? "#f59e0b" : "#ef4444";
-
-  return (
-    <div style={{
-      background: "#020617",
-      border: "1px solid #1e293b",
-      borderRadius: 10,
-      padding: 12
-    }}>
-      <div style={{ fontSize: 11, color: "#94a3b8" }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color }}>
-        {Math.round(value)}
+      {/* ── Valorisation */}
+      <div style={card}>
+        <div style={sectionTitle}>── Valorisation & Risque Long Terme</div>
+        <div style={row}><span>MVRV Percentile</span><span>{fmt(d.mvrvPct)}</span></div>
+        <div style={row}><span>Mayer Multiple</span><span>{fmt(d.mayerMultiple)}</span></div>
+        <div style={row}><span>Sharpe (court terme)</span><span>{fmt(d.sharpeShort)}</span></div>
+        <div style={row}><span>Thermal Score</span><span>{fmt(d.thermalScore)}</span></div>
       </div>
+
     </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCQuantDesk />);
+  .render(<BTCFundDesk />);
