@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+const { useState, useEffect } = React;
 
-export default function BTCHedgeUltimate() {
+function BTCHedgeUltimate() {
 
-  // ───────────── DATA STATE ─────────────
   const [vals, setVals] = useState({
     price: 0,
     etfNetflow: 0,
@@ -21,13 +20,11 @@ export default function BTCHedgeUltimate() {
 
   const [loaded, setLoaded] = useState(false);
 
-  // ───────────── FETCH DASHBOARD JSON ─────────────
+  // Fetch JSON
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/btc_dashboard.json");
-        const data = await res.json();
-
+    fetch("btc_dashboard.json")
+      .then(res => res.json())
+      .then(data => {
         setVals({
           price: data.price || 0,
           etfNetflow: data.etfNetflow || 0,
@@ -43,26 +40,24 @@ export default function BTCHedgeUltimate() {
           sharpe: data.sharpe || 0,
           whales: data.whales || 0
         });
-
-      } catch (e) {
-        console.error("Erreur chargement btc_dashboard.json", e);
-      }
-      setLoaded(true);
-    };
-
-    load();
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error("Erreur JSON:", err);
+        setLoaded(true);
+      });
   }, []);
 
   if (!loaded) {
     return <div style={{color:"#fff",padding:40}}>Chargement...</div>;
   }
 
-  // ───────────── HEAT ENGINE ─────────────
+  // Heat function
   const heat = (v, low, mid, high) => {
-    if (v <= low) return { score: 9, color: "#2ecc71" };      // très bullish
-    if (v <= mid) return { score: 6, color: "#ffe066" };      // neutre
-    if (v <= high) return { score: 4, color: "#ffa500" };     // chaud
-    return { score: 2, color: "#ff4d4d" };                    // euphorie / risque
+    if (v <= low) return { score: 9, color: "#22c55e" };
+    if (v <= mid) return { score: 6, color: "#fde047" };
+    if (v <= high) return { score: 4, color: "#f59e0b" };
+    return { score: 2, color: "#ef4444" };
   };
 
   const metrics = {
@@ -76,123 +71,74 @@ export default function BTCHedgeUltimate() {
 
   const scores = Object.values(metrics).map(m => m.score);
   const thermalScore =
-    scores.reduce((a, b) => a + b, 0) / scores.length;
+    scores.reduce((a,b)=>a+b,0) / scores.length;
 
-  // ───────────── MARKET REGIME ─────────────
   let regime = "NEUTRAL";
-  if (thermalScore >= 7.5) regime = "ACCUMULATION ZONE";
+  if (thermalScore >= 7.5) regime = "ACCUMULATION";
   else if (thermalScore >= 6) regime = "EARLY BULL";
   else if (thermalScore >= 4.5) regime = "LATE BULL";
   else if (thermalScore >= 3) regime = "DISTRIBUTION";
-  else regime = "EUPHORIA / TOP RISK";
+  else regime = "TOP RISK";
 
   const regimeColor =
-    thermalScore >= 7 ? "#2ecc71"
+    thermalScore >= 7 ? "#22c55e"
     : thermalScore >= 6 ? "#a3e635"
-    : thermalScore >= 4.5 ? "#ffe066"
-    : thermalScore >= 3 ? "#ffa500"
-    : "#ff4d4d";
-
-  // ───────────── STYLES ─────────────
-  const page = {
-    background:"#020617",
-    minHeight:"100vh",
-    padding:24,
-    color:"#e5e7eb",
-    fontFamily:"Inter"
-  };
+    : thermalScore >= 4.5 ? "#fde047"
+    : thermalScore >= 3 ? "#f59e0b"
+    : "#ef4444";
 
   const card = {
     background:"#0b1220",
     border:"1px solid #1f2937",
     borderRadius:10,
     padding:16,
-    marginBottom:16
+    marginBottom:16,
+    color:"#e5e7eb"
   };
 
   const row = {
     display:"flex",
     justifyContent:"space-between",
-    padding:"6px 0",
-    fontSize:14
+    padding:"6px 0"
   };
 
-  const heatBox = (color) => ({
-    width:12,
-    height:12,
-    borderRadius:3,
-    background:color,
-    marginRight:8
-  });
-
-  // ───────────── UI ─────────────
   return (
-    <div style={page}>
+    <div style={{padding:24}}>
 
-      {/* HEADER */}
-      <div style={{marginBottom:20}}>
-        <div style={{fontSize:26,fontWeight:700}}>
-          BTC ON-CHAIN — HEDGE++ ULTIMATE
-        </div>
-        <div style={{fontSize:22,color:"#facc15"}}>
-          ${vals.price.toLocaleString()}
-        </div>
-      </div>
+      <h1 style={{color:"#fff"}}>BTC HEDGE++ ULTIMATE</h1>
+      <h2 style={{color:"#facc15"}}>${vals.price.toLocaleString()}</h2>
 
-      {/* GLOBAL SCORE */}
       <div style={{...card,border:`2px solid ${regimeColor}`}}>
-        <div style={{fontSize:12,color:"#9ca3af"}}>Thermal Score</div>
-        <div style={{fontSize:40,fontWeight:700,color:regimeColor}}>
+        <div>Thermal Score</div>
+        <div style={{fontSize:36,color:regimeColor}}>
           {thermalScore.toFixed(1)}
         </div>
-        <div style={{fontSize:14}}>{regime}</div>
+        <div>{regime}</div>
       </div>
 
-      {/* HEATMAP */}
       <div style={card}>
-        <div style={{fontWeight:600,marginBottom:10}}>Heatmap (Institutional)</div>
-
-        {[
-          ["MVRV Percentile", vals.mvrv, metrics.mvrv],
-          ["Mayer Multiple", vals.mayer, metrics.mayer],
-          ["Sharpe Ratio", vals.sharpe, metrics.sharpe],
-          ["SOPR", vals.sopr, metrics.sopr],
-          ["UTXO Ratio", vals.utxo, metrics.utxo],
-          ["Futures Power", vals.futuresPower, metrics.futures]
-        ].map(([name, value, m]) => (
-          <div key={name} style={row}>
-            <div style={{display:"flex",alignItems:"center"}}>
-              <div style={heatBox(m.color)}></div>
-              {name}
-            </div>
-            <div>{value}</div>
+        <b>Heatmap</b>
+        {Object.entries(metrics).map(([k,m])=>(
+          <div key={k} style={row}>
+            <span>{k}</span>
+            <span style={{color:m.color}}>
+              {vals[k] ?? vals.futuresPower}
+            </span>
           </div>
         ))}
       </div>
 
-      {/* FLOWS */}
       <div style={card}>
-        <div style={{fontWeight:600,marginBottom:10}}>Flux & Liquidité</div>
-        <div style={row}><span>ETF Netflow 30D</span><span>{vals.etfNetflow} B$</span></div>
-        <div style={row}><span>USDT SMA(30)</span><span>{vals.usdtSma} B$</span></div>
-        <div style={row}><span>Net Taker Volume</span><span>{vals.ntvSellCount}</span></div>
-      </div>
-
-      {/* DERIVATIVES */}
-      <div style={card}>
-        <div style={{fontWeight:600,marginBottom:10}}>Dérivés</div>
-        <div style={row}><span>Futures Power</span><span>{vals.futuresPower}%</span></div>
-        <div style={row}><span>Bull/Bear 30D</span><span>{vals.bullBear30d}</span></div>
-      </div>
-
-      {/* HOLDERS */}
-      <div style={card}>
-        <div style={{fontWeight:600,marginBottom:10}}>Holders</div>
-        <div style={row}><span>SOPR</span><span>{vals.sopr}</span></div>
-        <div style={row}><span>STH NUPL</span><span>{vals.sthNupl}</span></div>
-        <div style={row}><span>Whales</span><span>{vals.whales}</span></div>
+        <b>Flux & Liquidité</b>
+        <div style={row}><span>ETF</span><span>{vals.etfNetflow}</span></div>
+        <div style={row}><span>USDT</span><span>{vals.usdtSma}</span></div>
+        <div style={row}><span>NTV</span><span>{vals.ntvSellCount}</span></div>
       </div>
 
     </div>
   );
 }
+
+// Render
+ReactDOM.createRoot(document.getElementById("root"))
+  .render(<BTCHedgeUltimate />);
