@@ -1,6 +1,6 @@
 const { useState, useEffect } = React;
 
-function BTCFundDesk() {
+function BTCHedgeDesk() {
 
   const PANEL = "#0f172a";
   const BORDER = "#1e293b";
@@ -22,7 +22,7 @@ function BTCFundDesk() {
 
   const [lastUpdate, setLastUpdate] = useState("");
 
-  // ===== DATA LOAD =====
+  // ===== LOAD DASHBOARD =====
   useEffect(() => {
 
     const load = async () => {
@@ -52,55 +52,70 @@ function BTCFundDesk() {
 
   }, []);
 
-  // ===== FUND MODEL =====
+  // ===== HEDGE MODEL =====
 
   let score = 0;
 
   // Bottom signals
-  if (vals.mvrv < 15) score += 2;
-  if (vals.mayer < 0.8) score += 2;
-  if (vals.sharpe < -20) score += 2;
+  if (vals.mvrv < 20) score += 2;
+  if (vals.mayer < 0.9) score += 2;
+  if (vals.sharpe < -15) score += 2;
   if (vals.sopr < 1) score += 1;
   if (vals.whales > 0) score += 1;
 
   // Top risk
   let topRisk = 0;
-  if (vals.mvrv > 80) topRisk += 2;
-  if (vals.mayer > 2) topRisk += 2;
+  if (vals.mvrv > 75) topRisk += 2;
+  if (vals.mayer > 2.2) topRisk += 2;
   if (vals.sopr > 1.05) topRisk += 1;
 
   const bottomProb = Math.min(100, score * 10);
   const topProb = Math.min(100, topRisk * 15);
 
-  // ===== CYCLE PHASE =====
-  let phase = "Distribution";
-  let phaseColor = RED;
+  // ===== MARKET STATE =====
+
+  let state = "Neutral";
+  let stateColor = MUTED;
+  let timing = "No edge";
 
   if (bottomProb > 70) {
-    phase = "Capitulation / Accumulation";
-    phaseColor = GREEN;
+    state = "BUY THE DIP";
+    stateColor = GREEN;
+    timing = "Accumulation window (2–6 weeks)";
   }
   else if (bottomProb > 40) {
-    phase = "Accumulation Range";
-    phaseColor = ORANGE;
+    state = "Gradual Accumulation";
+    stateColor = ORANGE;
+    timing = "Build position slowly";
   }
-  else if (topProb > 60) {
-    phase = "Late Bull / Distribution";
-    phaseColor = RED;
+  else if (topProb > 70) {
+    state = "EXIT / DE-RISK";
+    stateColor = RED;
+    timing = "Top risk (1–4 weeks)";
+  }
+  else if (topProb > 40) {
+    state = "REDUCE EXPOSURE";
+    stateColor = YELLOW;
+    timing = "Distribution phase";
   }
   else if (vals.mvrv > 40) {
-    phase = "Early Bull";
-    phaseColor = YELLOW;
+    state = "TREND LONG";
+    stateColor = GREEN;
+    timing = "Momentum phase";
   }
 
-  // ===== PRICE ZONES MODEL =====
+  // ===== GLOBAL SCORE =====
+  const hedgeScore = Math.max(0, Math.min(100, 50 + bottomProb - topProb));
+
+  // ===== PRICE MODEL =====
   const price = vals.btcPrice;
 
   const zones = [
-    { label: "Capitulation Zone", value: price * 0.6 },
-    { label: "Probable Bottom", value: price * 0.75 },
+    { label: "Capitulation", value: price * 0.6 },
+    { label: "Institutional Bid", value: price * 0.8 },
     { label: "Fair Value", value: price },
-    { label: "Cycle Top Risk", value: price * 1.8 }
+    { label: "Distribution", value: price * 1.5 },
+    { label: "Blow-off Risk", value: price * 1.9 }
   ];
 
   const card = {
@@ -118,7 +133,7 @@ function BTCFundDesk() {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>
-            BTC FUND DESK — CYCLE MODEL
+            BTC HEDGE DESK — MARKET ENGINE
           </div>
           <div style={{ fontSize: 12, color: GREEN }}>
             Update : {lastUpdate}
@@ -130,23 +145,34 @@ function BTCFundDesk() {
         </div>
       </div>
 
-      {/* CYCLE PHASE */}
-      <div style={{ ...card, borderLeft: `4px solid ${phaseColor}` }}>
-        <div style={{ fontSize: 12, color: MUTED }}>Cycle Phase</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: phaseColor }}>
-          {phase}
+      {/* MAIN SIGNAL */}
+      <div style={{ ...card, borderLeft: `4px solid ${stateColor}` }}>
+        <div style={{ fontSize: 12, color: MUTED }}>Primary Signal</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: stateColor }}>
+          {state}
+        </div>
+        <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>
+          {timing}
+        </div>
+      </div>
+
+      {/* HEDGE SCORE */}
+      <div style={{ ...card }}>
+        <div style={{ fontSize: 12, color: MUTED }}>Hedge Market Score</div>
+        <div style={{ fontSize: 28, fontWeight: 700 }}>
+          {hedgeScore}/100
         </div>
       </div>
 
       {/* PROBABILITIES */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <Prob label="Bottom Probability" value={bottomProb} />
-        <Prob label="Top Risk" value={topProb} />
+        <Prob label="Top Probability" value={topProb} />
       </div>
 
       {/* PRICE ZONES */}
       <div style={card}>
-        <div style={{ marginBottom: 10, color: MUTED }}>Cycle Price Model</div>
+        <div style={{ marginBottom: 10, color: MUTED }}>Liquidity & Cycle Zones</div>
         {zones.map((z, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span>{z.label}</span>
@@ -205,4 +231,4 @@ function Prob({ label, value }) {
 }
 
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCFundDesk />);
+  .render(<BTCHedgeDesk />);
