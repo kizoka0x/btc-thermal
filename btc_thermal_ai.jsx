@@ -1,8 +1,7 @@
 const { useState, useEffect } = React;
 
-function BTCThermalAI() {
+function BTCFundDesk() {
 
-  // ===== STYLE =====
   const PANEL = "#0f172a";
   const BORDER = "#1e293b";
   const TEXT = "#e5e7eb";
@@ -12,93 +11,97 @@ function BTCThermalAI() {
   const RED = "#ef4444";
   const YELLOW = "#facc15";
 
-  // ===== STATE =====
   const [vals, setVals] = useState({
     btcPrice: 0,
-    mayer: 0,
     mvrv: 0,
+    mayer: 0,
     sopr: 0,
     sharpe: 0,
     whales: 0
   });
 
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState("");
 
-  // ===== LOAD DASHBOARD =====
+  // ===== DATA LOAD =====
   useEffect(() => {
 
-    const loadData = async () => {
+    const load = async () => {
       try {
         const res = await fetch("btc_dashboard.json?cache=" + Date.now());
-        const data = await res.json();
+        const d = await res.json();
 
         setVals({
-          btcPrice: data.btcPrice || data.price || 0,
-          mayer: data.mayerMultiple || data.mayer || 0,
-          mvrv: data.mvrvPct || data.mvrv || 0,
-          sopr: data.soprRatio || data.sopr || 0,
-          sharpe: data.sharpeShort || data.sharpe || 0,
-          whales: data.whales1k10k || data.whales || 0
+          btcPrice: d.btcPrice || d.price || 0,
+          mvrv: d.mvrvPct || d.mvrv || 0,
+          mayer: d.mayerMultiple || d.mayer || 0,
+          sopr: d.soprRatio || d.sopr || 0,
+          sharpe: d.sharpeShort || d.sharpe || 0,
+          whales: d.whales1k10k || d.whales || 0
         });
 
-        setLastUpdate(data.updated || new Date().toLocaleString());
+        setLastUpdate(d.updated || new Date().toLocaleString());
 
-      } catch (err) {
-        console.error("Dashboard error:", err);
+      } catch (e) {
+        console.error("Dashboard error:", e);
       }
     };
 
-    loadData();
-    const interval = setInterval(loadData, 300000);
-    return () => clearInterval(interval);
+    load();
+    const i = setInterval(load, 300000);
+    return () => clearInterval(i);
 
   }, []);
 
-  // ===== SCORES =====
+  // ===== FUND MODEL =====
 
-  // CT (structure marché)
-  let scoreCT = 0;
-  if (vals.sopr < 1) scoreCT += 1;
-  if (vals.whales > 0) scoreCT += 1;
+  let score = 0;
 
-  // MT (stress marché)
-  let scoreMT = 0;
-  if (vals.mayer < 0.9) scoreMT += 1;
-  if (vals.sharpe < -10) scoreMT += 1;
+  // Bottom signals
+  if (vals.mvrv < 15) score += 2;
+  if (vals.mayer < 0.8) score += 2;
+  if (vals.sharpe < -20) score += 2;
+  if (vals.sopr < 1) score += 1;
+  if (vals.whales > 0) score += 1;
 
-  // LT (zones d'accumulation)
-  let scoreLT = 0;
-  if (vals.mvrv < 20) scoreLT += 2;
-  if (vals.mayer < 0.8) scoreLT += 2;
-  if (vals.sharpe < -20) scoreLT += 2;
+  // Top risk
+  let topRisk = 0;
+  if (vals.mvrv > 80) topRisk += 2;
+  if (vals.mayer > 2) topRisk += 2;
+  if (vals.sopr > 1.05) topRisk += 1;
 
-  const totalScore = scoreCT + scoreMT + scoreLT;
+  const bottomProb = Math.min(100, score * 10);
+  const topProb = Math.min(100, topRisk * 15);
 
-  // ===== BOTTOM PROBABILITY =====
-  const bottomProb = Math.min(100, totalScore * 10);
-
-  // ===== MARKET REGIME =====
-  let regime = "Distribution";
-  let regimeColor = RED;
+  // ===== CYCLE PHASE =====
+  let phase = "Distribution";
+  let phaseColor = RED;
 
   if (bottomProb > 70) {
-    regime = "Bottom Zone / Accumulation";
-    regimeColor = GREEN;
-  } else if (bottomProb > 40) {
-    regime = "Bear Market";
-    regimeColor = ORANGE;
+    phase = "Capitulation / Accumulation";
+    phaseColor = GREEN;
+  }
+  else if (bottomProb > 40) {
+    phase = "Accumulation Range";
+    phaseColor = ORANGE;
+  }
+  else if (topProb > 60) {
+    phase = "Late Bull / Distribution";
+    phaseColor = RED;
+  }
+  else if (vals.mvrv > 40) {
+    phase = "Early Bull";
+    phaseColor = YELLOW;
   }
 
-  // ===== ALERT SYSTEM =====
-  let alert = null;
+  // ===== PRICE ZONES MODEL =====
+  const price = vals.btcPrice;
 
-  if (bottomProb > 80) {
-    alert = { text: "⚡ STRONG BUY ZONE", color: GREEN };
-  } else if (bottomProb > 60) {
-    alert = { text: "Accumulation Phase", color: YELLOW };
-  } else if (bottomProb < 20) {
-    alert = { text: "Risk of Distribution", color: RED };
-  }
+  const zones = [
+    { label: "Capitulation Zone", value: price * 0.6 },
+    { label: "Probable Bottom", value: price * 0.75 },
+    { label: "Fair Value", value: price },
+    { label: "Cycle Top Risk", value: price * 1.8 }
+  ];
 
   const card = {
     background: PANEL,
@@ -108,87 +111,54 @@ function BTCThermalAI() {
     marginBottom: 16
   };
 
-  // ===== UI =====
   return (
     <div style={{ padding: 24, color: TEXT, fontFamily: "Arial" }}>
 
       {/* HEADER */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: 20
-      }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>
-            BTC ON-CHAIN — ELITE DESK
+            BTC FUND DESK — CYCLE MODEL
           </div>
-          {lastUpdate && (
-            <div style={{ fontSize: 12, color: "#22c55e" }}>
-              Update : {lastUpdate}
-            </div>
-          )}
+          <div style={{ fontSize: 12, color: GREEN }}>
+            Update : {lastUpdate}
+          </div>
         </div>
 
         <div style={{ fontSize: 34, fontWeight: 700, color: YELLOW }}>
-          ${(vals.btcPrice / 1000).toFixed(1)}K
+          ${(price / 1000).toFixed(1)}K
         </div>
       </div>
 
-      {/* ALERT */}
-      {alert && (
-        <div style={{
-          ...card,
-          borderLeft: `4px solid ${alert.color}`,
-          color: alert.color,
-          fontWeight: 600
-        }}>
-          {alert.text}
+      {/* CYCLE PHASE */}
+      <div style={{ ...card, borderLeft: `4px solid ${phaseColor}` }}>
+        <div style={{ fontSize: 12, color: MUTED }}>Cycle Phase</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: phaseColor }}>
+          {phase}
         </div>
-      )}
+      </div>
 
-      {/* BOTTOM PROBABILITY */}
+      {/* PROBABILITIES */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <Prob label="Bottom Probability" value={bottomProb} />
+        <Prob label="Top Risk" value={topProb} />
+      </div>
+
+      {/* PRICE ZONES */}
       <div style={card}>
-        <div style={{ marginBottom: 6 }}>
-          Bottom Probability : {bottomProb}%
-        </div>
-
-        <div style={{
-          height: 10,
-          background: BORDER,
-          borderRadius: 6,
-          overflow: "hidden",
-          marginBottom: 10
-        }}>
-          <div style={{
-            width: bottomProb + "%",
-            height: "100%",
-            background: regimeColor
-          }} />
-        </div>
-
-        <div style={{ color: regimeColor, fontWeight: 600 }}>
-          {regime}
-        </div>
-      </div>
-
-      {/* SCORES */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-        gap: 12,
-        marginBottom: 16
-      }}>
-        <Score label="Short Term" value={scoreCT} max={2} />
-        <Score label="Mid Term" value={scoreMT} max={2} />
-        <Score label="Long Term" value={scoreLT} max={6} />
+        <div style={{ marginBottom: 10, color: MUTED }}>Cycle Price Model</div>
+        {zones.map((z, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span>{z.label}</span>
+            <span style={{ fontFamily: "monospace" }}>
+              ${(z.value / 1000).toFixed(1)}K
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* METRICS */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-        gap: 12
-      }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
         <Metric label="MVRV %" value={vals.mvrv} />
         <Metric label="Mayer" value={vals.mayer} />
         <Metric label="SOPR" value={vals.sopr} />
@@ -200,7 +170,6 @@ function BTCThermalAI() {
   );
 }
 
-// ===== COMPONENTS =====
 function Metric({ label, value }) {
   return (
     <div style={{
@@ -211,14 +180,15 @@ function Metric({ label, value }) {
     }}>
       <div style={{ fontSize: 11, color: "#94a3b8" }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 600 }}>
-        {typeof value === "number" ? value.toFixed(2) : value}
+        {Number(value).toFixed(2)}
       </div>
     </div>
   );
 }
 
-function Score({ label, value, max }) {
-  const pct = (value / max) * 100;
+function Prob({ label, value }) {
+  const color = value > 70 ? "#22c55e" : value > 40 ? "#f59e0b" : "#ef4444";
+
   return (
     <div style={{
       background: "#020617",
@@ -227,24 +197,12 @@ function Score({ label, value, max }) {
       padding: 12
     }}>
       <div style={{ fontSize: 11, color: "#94a3b8" }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 600 }}>{value} / {max}</div>
-      <div style={{
-        height: 6,
-        background: "#1e293b",
-        marginTop: 6,
-        borderRadius: 4,
-        overflow: "hidden"
-      }}>
-        <div style={{
-          width: pct + "%",
-          height: "100%",
-          background: "#22c55e"
-        }} />
+      <div style={{ fontSize: 22, fontWeight: 700, color }}>
+        {value}%
       </div>
     </div>
   );
 }
 
-// ===== RENDER =====
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCThermalAI />);
+  .render(<BTCFundDesk />);
