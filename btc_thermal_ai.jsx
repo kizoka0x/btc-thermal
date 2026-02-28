@@ -331,8 +331,7 @@ useEffect(() => {
             <button onClick={()=>setShowHistory(h=>!h)} style={{
               background:PANEL,color:"#c9d1d9",border:`1px solid ${BORDER}`,borderRadius:6,
               padding:"5px 12px",fontSize:10,cursor:"pointer",fontFamily:"monospace",letterSpacing:.8}}>
-              📜 HISTORIQUE
-            </button>
+              📜 HISTORIQUE           
           </div>
         </div>
       </div>
