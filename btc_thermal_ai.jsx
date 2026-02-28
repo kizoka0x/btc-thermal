@@ -1,233 +1,252 @@
 const { useState, useEffect } = React;
 
-function BTCTerminal() {
+// ─────────────────────────────────────────────
+// Helpers sécurité
+// ─────────────────────────────────────────────
+const num = (v, d = 0) => {
+  const n = Number(v);
+  return isNaN(n) ? d : n;
+};
 
-  const [v, setV] = useState(null);
+const f2 = v => num(v).toFixed(2);
+const f4 = v => num(v).toFixed(4);
+const pct = v => (num(v) * 100).toFixed(2) + "%";
+const sign = (v, d = 2) => (v >= 0 ? "+" : "") + num(v).toFixed(d);
 
-  // ───── LOAD DASHBOARD ─────
+// ─────────────────────────────────────────────
+// APP
+// ─────────────────────────────────────────────
+function BTCThermalAI() {
+
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [error, setError] = useState("");
+
+  // ─────────────────────────────────────────────
+  // Chargement JSON robuste
+  // ─────────────────────────────────────────────
+  const load = async () => {
+    setStatus("loading");
+
+    try {
+      const res = await fetch("btc_dashboard.json?t=" + Date.now());
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      const raw = await res.json();
+
+      // Mapping EXACT avec ton JSON réel
+      const mapped = {
+        updated: raw.updated || "",
+
+        btcPrice: num(raw.btcPrice),
+
+        // Flux & liquidité
+        etfNetflow: num(raw.etfNetflow),
+        usdtSma: num(raw.usdtSma),
+        ntvSellCount: num(raw.ntvSellCount),
+
+        // Dérivés
+        futuresPower: num(raw.futuresPower),
+        bullBear30d: num(raw.bullBear30d),
+        bullBear365d: num(raw.bullBear365d),
+
+        // Holders
+        soprRatio: num(raw.soprRatio),
+        lthNupl: num(raw.lthNupl),
+        sthNupl: num(raw.sthNupl),
+        utxoRatio: num(raw.utxoRatio),
+
+        // Valorisation
+        mvrvPct: num(raw.mvrvPct),
+        mayerMultiple: num(raw.mayerMultiple),
+        sharpeShort: num(raw.sharpeShort),
+
+        // Smart money
+        whales1k10k: num(raw.whales1k10k),
+
+        // Score pipeline
+        thermalScore: num(raw.thermalScore)
+      };
+
+      setData(mapped);
+      setStatus("ok");
+
+    } catch (e) {
+      setStatus("error");
+      setError(e.message);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        const r = await fetch("./btc_dashboard.json?t=" + Date.now());
-        const d = await r.json();
-
-        setV({
-          updated: d.updated,
-          price: d.btcPrice,
-          thermal: d.thermalScore,
-
-          // Flux
-          etf: d.etfNetflow,
-          usdt: d.usdtSma,
-          ntv: d.ntvSellCount,
-
-          // Structure
-          futures: d.futuresPower,
-          bb30: d.bullBear30d,
-          bb365: d.bullBear365d,
-
-          // Holders
-          sopr: d.soprRatio,
-          lthNupl: d.lthNupl,
-          sthNupl: d.sthNupl,
-          utxo: d.utxoRatio,
-          whales: d.whales1k10k,
-
-          // Valuation
-          mvrv: d.mvrvPct,
-          mayer: d.mayerMultiple,
-          sharpe: d.sharpeShort
-        });
-
-      } catch (e) {
-        console.error("Dashboard error", e);
-      }
-    };
-
     load();
-    const i = setInterval(load, 300000);
-    return () => clearInterval(i);
   }, []);
 
-  if (!v) return <div style={{color:"#fff",padding:40}}>Loading Sovereign Model...</div>;
+  // ─────────────────────────────────────────────
+  // États
+  // ─────────────────────────────────────────────
+  if (status === "loading") {
+    return (
+      <div style={{
+        background:"#0b0f19",
+        color:"#aaa",
+        height:"100vh",
+        display:"flex",
+        alignItems:"center",
+        justifyContent:"center",
+        fontFamily:"monospace"
+      }}>
+        Chargement btc_dashboard.json…
+      </div>
+    );
+  }
 
-  // ───── SOVEREIGN CYCLE ENGINE ─────
+  if (status === "error") {
+    return (
+      <div style={{
+        background:"#0b0f19",
+        color:"#ff6b6b",
+        height:"100vh",
+        display:"flex",
+        flexDirection:"column",
+        alignItems:"center",
+        justifyContent:"center",
+        fontFamily:"monospace",
+        gap:10
+      }}>
+        <div>Erreur chargement JSON</div>
+        <div style={{fontSize:12}}>{error}</div>
+        <button onClick={load}>Réessayer</button>
+      </div>
+    );
+  }
 
-  // Long-term cycle score (valuation)
-  const cycleScore =
-    (v.mvrv * 4) +
-    (v.mayer * 2) +
-    (v.lthNupl * 3);
+  const d = data;
 
-  // Liquidity regime
-  const liquidity =
-    (v.etf) +
-    (v.usdt * 1000) -
-    (v.futures - 50);
-
-  // Market stress
-  const stress =
-    Math.abs(v.sopr - 1) * 10 +
-    Math.abs(v.bb30) * 5 +
-    Math.abs(v.sharpe) / 5;
-
-  // ───── GLOBAL REGIME ─────
-  let regime = "Neutral";
-  let color = "#fde047";
-
-  if (v.thermal >= 7.5) { regime = "Strategic Accumulation"; color = "#22c55e"; }
-  else if (v.thermal >= 6) { regime = "Expansion Phase"; color = "#84cc16"; }
-  else if (v.thermal >= 4.5) { regime = "Late Cycle"; color = "#fde047"; }
-  else if (v.thermal >= 3) { regime = "Distribution Risk"; color = "#f59e0b"; }
-  else { regime = "Cycle Top Zone"; color = "#ef4444"; }
-
-  // ───── HEAT COLORS ─────
-  const heat = (val, a, b, c) => {
-    if (val <= a) return "#22c55e";
-    if (val <= b) return "#a3e635";
-    if (val <= c) return "#fde047";
-    return "#ef4444";
-  };
-
-  const h = {
-    mvrv: heat(v.mvrv, 0.2, 0.6, 0.85),
-    mayer: heat(v.mayer, 0.8, 1.2, 1.8),
-    sopr: heat(v.sopr, 0.98, 1.02, 1.08),
-    futures: heat(v.futures, 40, 55, 70),
-    sharpe: heat(v.sharpe, -20, 10, 40)
-  };
-
-  // ───── STYLE ─────
-  const page = {
-    background:"#020617",
-    minHeight:"100vh",
-    padding:24,
-    color:"#e5e7eb",
-    fontFamily:"Arial"
-  };
-
-  const card = {
-    background:"#0b1220",
-    border:"1px solid #1f2937",
-    borderRadius:10,
-    padding:16
-  };
-
-  const grid = {
-    display:"grid",
-    gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",
-    gap:16
-  };
-
-  const row = {
-    display:"flex",
-    justifyContent:"space-between",
-    padding:"6px 0",
-    fontSize:14
-  };
-
-  const dot = c => ({
-    width:10,
-    height:10,
-    borderRadius:2,
-    background:c,
-    marginRight:8
-  });
-
-  // ───── UI ─────
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   return (
-    <div style={page}>
+    <div style={{
+      background:"#080c10",
+      color:"#e6edf3",
+      minHeight:"100vh",
+      padding:20,
+      fontFamily:"Arial"
+    }}>
 
       {/* HEADER */}
-      <div style={{marginBottom:20}}>
-        <div style={{fontSize:28,fontWeight:700}}>
-          BTC SOVEREIGN FUND MODEL
+      <div style={{
+        display:"flex",
+        justifyContent:"space-between",
+        borderBottom:"1px solid #1a2030",
+        paddingBottom:12,
+        marginBottom:18
+      }}>
+        <div>
+          <div style={{fontSize:20,fontWeight:700}}>
+            BTC DASHBOARD
+          </div>
+          <div style={{fontSize:11,color:"#4a5568"}}>
+            Source : btc_dashboard.json
+          </div>
+          <div style={{fontSize:10,color:"#2ecc71"}}>
+            Updated : {d.updated}
+          </div>
         </div>
-        <div style={{fontSize:22,color:"#facc15"}}>
-          ${v.price.toLocaleString()}
-        </div>
-        <div style={{fontSize:11,color:"#22c55e"}}>
-          Updated: {v.updated}
+
+        <div style={{textAlign:"right"}}>
+          <div style={{
+            fontSize:28,
+            fontWeight:700,
+            color:"#ffd166",
+            fontFamily:"monospace"
+          }}>
+            ${(d.btcPrice/1000).toFixed(2)}K
+          </div>
+          <div style={{fontSize:11,color:"#4a5568"}}>
+            Thermal Score : {f2(d.thermalScore)} / 100
+          </div>
         </div>
       </div>
 
-      {/* GLOBAL REGIME */}
-      <div style={{...card,marginBottom:20,border:`2px solid ${color}`}}>
-        <div style={{fontSize:12,color:"#9ca3af"}}>Macro Cycle Regime</div>
-        <div style={{fontSize:38,fontWeight:700,color:color}}>
-          {regime}
-        </div>
-        <div style={{fontSize:14}}>
-          Thermal Score: {v.thermal.toFixed(2)}
-        </div>
-      </div>
+      {/* SECTIONS */}
 
-      <div style={grid}>
+      <Section title="Flux & Liquidité">
+        <Row name="ETF Netflow 30D Sum" value={sign(d.etfNetflow) + "%"} />
+        <Row name="USDT Stablecoin SMA(30)" value={f4(d.usdtSma)} />
+        <Row name="Net Taker Volume Binance" value={d.ntvSellCount} />
+      </Section>
 
-        {/* Liquidity */}
-        <div style={card}>
-          <b>Liquidity & Flows</b>
-          <div style={row}><span>ETF Netflow</span><span>{v.etf.toFixed(2)}</span></div>
-          <div style={row}><span>USDT SMA</span><span>{v.usdt.toFixed(4)}</span></div>
-          <div style={row}><span>Net Taker</span><span>{v.ntv}</span></div>
-        </div>
+      <Section title="Dérivés & Structure de marché">
+        <Row name="Futures Power 30D Change" value={f2(d.futuresPower)} />
+        <Row name="Bull/Bear Cycle Indicator"
+             value={`30j ${sign(d.bullBear30d,3)} | 365j ${sign(d.bullBear365d,3)}`} />
+      </Section>
 
-        {/* Market Structure */}
-        <div style={card}>
-          <b>Market Structure</b>
-          <div style={row}>
-            <span style={{display:"flex",alignItems:"center"}}>
-              <div style={dot(h.futures)}></div>Futures Power
-            </span>
-            <span>{v.futures}%</span>
-          </div>
-          <div style={row}><span>Bull/Bear 30D</span><span>{v.bb30.toFixed(3)}</span></div>
-          <div style={row}><span>Bull/Bear 365D</span><span>{v.bb365.toFixed(3)}</span></div>
-        </div>
+      <Section title="Profitabilité & Comportement des holders">
+        <Row name="LTH/STH SOPR Ratio" value={f4(d.soprRatio)} />
+        <Row name="aLTH/aSTH NUPL"
+             value={`LTH ${f4(d.lthNupl)} | STH ${f4(d.sthNupl)}`} />
+        <Row name="UTXO Block P/L Count Ratio" value={pct(d.utxoRatio)} />
+      </Section>
 
-        {/* Holders */}
-        <div style={card}>
-          <b>Holder Behaviour</b>
-          <div style={row}>
-            <span style={{display:"flex",alignItems:"center"}}>
-              <div style={dot(h.sopr)}></div>SOPR
-            </span>
-            <span>{v.sopr.toFixed(3)}</span>
-          </div>
-          <div style={row}><span>LTH NUPL</span><span>{v.lthNupl.toFixed(3)}</span></div>
-          <div style={row}><span>STH NUPL</span><span>{v.sthNupl.toFixed(3)}</span></div>
-          <div style={row}><span>UTXO</span><span>{v.utxo.toFixed(4)}</span></div>
-          <div style={row}><span>Whales</span><span>{v.whales}</span></div>
-        </div>
-
-        {/* Valuation */}
-        <div style={card}>
-          <b>Valuation & Risk</b>
-          <div style={row}>
-            <span style={{display:"flex",alignItems:"center"}}>
-              <div style={dot(h.mvrv)}></div>MVRV
-            </span>
-            <span>{v.mvrv.toFixed(3)}</span>
-          </div>
-          <div style={row}>
-            <span style={{display:"flex",alignItems:"center"}}>
-              <div style={dot(h.mayer)}></div>Mayer
-            </span>
-            <span>{v.mayer.toFixed(3)}</span>
-          </div>
-          <div style={row}>
-            <span style={{display:"flex",alignItems:"center"}}>
-              <div style={dot(h.sharpe)}></div>Sharpe
-            </span>
-            <span>{v.sharpe.toFixed(3)}</span>
-          </div>
-        </div>
-
-      </div>
+      <Section title="Valorisation & Risque Long Terme">
+        <Row name="MVRV Percentile — Cycle" value={f4(d.mvrvPct) + "%"} />
+        <Row name="Mayer Multiple" value={f4(d.mayerMultiple)} />
+        <Row name="Sharpe Ratio (court terme)" value={f4(d.sharpeShort)} />
+      </Section>
 
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCTerminal />);
+// ─────────────────────────────────────────────
+// Components
+// ─────────────────────────────────────────────
+function Section({ title, children }) {
+  return (
+    <div style={{marginBottom:20}}>
+      <div style={{
+        fontSize:11,
+        color:"#74c0fc",
+        marginBottom:6,
+        fontFamily:"monospace"
+      }}>
+        ── {title}
+      </div>
+      <div style={{
+        background:"#0d1117",
+        border:"1px solid #1a2030",
+        borderRadius:8
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Row({ name, value }) {
+  return (
+    <div style={{
+      display:"flex",
+      justifyContent:"space-between",
+      padding:"8px 12px",
+      borderBottom:"1px solid #111"
+    }}>
+      <div style={{fontSize:12}}>{name}</div>
+      <div style={{
+        fontFamily:"monospace",
+        color:"#ffd166",
+        fontWeight:700
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Mount
+// ─────────────────────────────────────────────
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<BTCThermalAI />);
