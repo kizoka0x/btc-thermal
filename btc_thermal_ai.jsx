@@ -232,59 +232,7 @@ useEffect(() => {
 
 
 
-      // Parse JSON
-      let parsed;
-      try {
-        const clean = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(clean);
-      } catch {
-        newLog.push({ ok: false, msg: "Erreur de parsing JSON — vérifier la réponse IA" });
-        setLog([...newLog]);
-        setLoading(false);
-        return;
-      }
-
-      // Apply extracted values (only non-null)
-      const updated = { ...vals };
-      let count = 0;
-      const fieldLabels = {
-        btcPrice: "Prix BTC", date: "Date", etfNetflow: "ETF Netflow 30D",
-        usdtSma: "USDT SMA(30)", ntvSellCount: "Net Taker Volume",
-        futuresPower: "Futures Power %", bullBear30d: "Bull/Bear 30d MA",
-        bullBear365d: "Bull/Bear 365d MA", soprRatio: "SOPR Ratio",
-        sthNupl: "STH NUPL", lthNupl: "LTH NUPL", utxoRatio: "UTXO Ratio",
-        mvrvPct: "MVRV Percentile", mayerMultiple: "Mayer Multiple",
-        sharpeShort: "Sharpe CT", whales1k10k: "Baleines 1k-10k"
-      };
-
-      for (const [k, v] of Object.entries(parsed)) {
-        if (v !== null && v !== undefined && k in updated) {
-          const old = updated[k];
-          updated[k] = v;
-          count++;
-          const change = typeof old === "number" && typeof v === "number"
-            ? ` (${old > v ? "▼" : old < v ? "▲" : "="} ${typeof v === "number" ? v.toLocaleString("fr-FR") : v})`
-            : ` → ${v}`;
-          newLog.push({ ok: true, msg: `${fieldLabels[k] || k}${change}` });
-        }
-      }
-
-      // Warn about missing fields
-      const missing = Object.entries(parsed).filter(([,v]) => v === null).map(([k]) => fieldLabels[k] || k);
-      if (missing.length) newLog.push({ warn: true, msg: `Non détecté : ${missing.join(", ")}` });
-
-      newLog.push({ ok: true, msg: `✓ ${count} valeur(s) extraite(s) et appliquées` });
-      setLog([...newLog]);
-      setVals(updated);
-      await saveToStorage(updated);
-
-    } catch (e) {
-      newLog.push({ ok: false, msg: `Erreur API : ${e.message}` });
-      setLog([...newLog]);
-    }
-
-    setLoading(false);
-  }, [vals, history]);
+   
 
   // ── COMPUTE SCORES ───────────────────────────────────────────────────────
   const s = {
