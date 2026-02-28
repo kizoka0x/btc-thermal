@@ -1,167 +1,162 @@
 const { useState, useEffect } = React;
 
-const BORDER = "#30363d";
-const PANEL = "#161b22";
-const MUTED = "#8b949e";
+const PANEL = "#0b1220";
+const BORDER = "#1f2a3a";
+const GREEN = "#2ecc71";
+const RED = "#ff4d4f";
+const ORANGE = "#f39c12";
+const YELLOW = "#f1c40f";
 
-function BTCthermalAI() {
-  const [showHistory, setShowHistory] = useState(false);
+function heatColor(v, min, max) {
+  if (v === undefined || v === null) return "#555";
+  const pct = (v - min) / (max - min);
+  if (pct < 0.3) return GREEN;
+  if (pct < 0.6) return YELLOW;
+  if (pct < 0.8) return ORANGE;
+  return RED;
+}
+
+function Card({ title, value, heat }) {
+  return (
+    <div style={{
+      background: PANEL,
+      border: `1px solid ${BORDER}`,
+      borderRadius: 8,
+      padding: 14,
+      marginBottom: 10
+    }}>
+      <div style={{fontSize:12,opacity:.7}}>{title}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+        <div style={{fontSize:18,fontWeight:700}}>
+          {value}
+        </div>
+        <div style={{
+          width:80,
+          height:8,
+          borderRadius:4,
+          background: heat
+        }} />
+      </div>
+    </div>
+  );
+}
+
+function BTCThermalAI() {
+  const [vals, setVals] = useState({});
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [thermalScore, setThermalScore] = useState(0);
 
-  const [vals, setVals] = useState({
-    btcPrice: 65000,
-    mvrvPct: 50,
-    mayerMultiple: 1.2
-  });
-
-  // Simulation chargement dashboard.json
   useEffect(() => {
-    fetch("btc_dashboard.json")
-      .then(r => r.json())
-      .then(data => {
-        setVals(v => ({ ...v, ...data }));
-        if (data.updated) setLastUpdate(data.updated);
-      })
-      .catch(() => {
-        console.log("Pas de fichier dashboard — mode démo");
-      });
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/btc_dashboard.json?t=" + Date.now());
+        const data = await res.json();
+
+        setVals(data);
+        setLastUpdate(data.updated);
+
+        // Score thermique simple (production stable)
+        let score = 0;
+        if (data.mvrvPct < 1) score += 1;
+        if (data.mayerMultiple < 1) score += 1;
+        if (data.etfNetflow < 0) score += 1;
+        if (data.bullBear30d < 0) score += 1;
+        if (data.futuresPower < 50) score += 1;
+        if (data.soprRatio < 1) score += 1;
+
+        setThermalScore(score);
+
+      } catch (e) {
+        console.log("Erreur chargement dashboard", e);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 300000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Couleur thermique
-  const getColor = (v) => {
-    if (v > 80) return "#ff4d4d";
-    if (v > 60) return "#ff9f43";
-    if (v > 40) return "#ffe066";
-    if (v > 20) return "#2ecc71";
-    return "#3498db";
-  };
+  const sentiment =
+    thermalScore >= 5 ? "BEARISH" :
+    thermalScore <= 2 ? "BULLISH" :
+    "NEUTRE";
 
-  // Données tableau
-  const rows = [
-    {
-      sec: "VALUATION",
-      name: "MVRV Percentile",
-      val: vals.mvrvPct,
-      score: vals.mvrvPct
-    },
-    {
-      name: "Mayer Multiple",
-      val: vals.mayerMultiple,
-      score: vals.mayerMultiple * 50
-    }
-  ];
+  const sentimentColor =
+    sentiment === "BEARISH" ? RED :
+    sentiment === "BULLISH" ? GREEN :
+    YELLOW;
 
   return (
-    <div style={{padding:20,maxWidth:1100,margin:"auto"}}>
+    <div style={{maxWidth:1100,margin:"40px auto",padding:20}}>
 
       {/* HEADER */}
-      <div style={{
-        display:"flex",
-        justifyContent:"space-between",
-        marginBottom:20,
-        borderBottom:`1px solid ${BORDER}`,
-        paddingBottom:10
-      }}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontSize:20,fontWeight:700}}>
+          <div style={{fontSize:24,fontWeight:700}}>
             BTC ON-CHAIN — TABLEAU THERMIQUE
           </div>
-
-          {lastUpdate &&
-            <div style={{fontSize:11,color:"#2ecc71"}}>
+          {lastUpdate && (
+            <div style={{fontSize:12,color:"#6ee7b7"}}>
               Dernière mise à jour : {lastUpdate}
             </div>
-          }
+          )}
         </div>
 
-        <div style={{textAlign:"right"}}>
-          <div style={{
-            fontFamily:"monospace",
-            fontSize:26,
-            color:"#ffe066"
-          }}>
-            ${(vals.btcPrice/1000).toFixed(1)}K
-          </div>
-
-          <button
-            onClick={() => setShowHistory(h => !h)}
-            style={{
-              marginTop:6,
-              background:PANEL,
-              color:"#c9d1d9",
-              border:`1px solid ${BORDER}`,
-              borderRadius:6,
-              padding:"5px 12px",
-              fontSize:10,
-              cursor:"pointer"
-            }}
-          >
-            📜 HISTORIQUE
-          </button>
+        <div style={{fontSize:32,fontWeight:700,color:"#ffe066"}}>
+          ${vals.btcPrice ? (vals.btcPrice/1000).toFixed(1) : "--"}K
         </div>
       </div>
 
-      {/* TABLE */}
-      <table style={{width:"100%",borderCollapse:"collapse"}}>
-        <thead>
-          <tr style={{borderBottom:`1px solid ${BORDER}`}}>
-            <th align="left">Indicateur</th>
-            <th>Valeur</th>
-            <th>Heat</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.map((row, i) => (
-            <React.Fragment key={i}>
-              {row.sec &&
-                <tr>
-                  <td colSpan="3" style={{
-                    paddingTop:12,
-                    color:MUTED,
-                    fontSize:11
-                  }}>
-                    {row.sec}
-                  </td>
-                </tr>
-              }
-
-              <tr style={{borderBottom:`1px solid rgba(255,255,255,.05)`}}>
-                <td style={{padding:"8px 0"}}>{row.name}</td>
-
-                <td>{row.val}</td>
-
-                <td>
-                  <div style={{
-                    width:80,
-                    height:10,
-                    background:getColor(row.score),
-                    borderRadius:4
-                  }}/>
-                </td>
-              </tr>
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-
-      {/* HISTORY */}
-      {showHistory &&
-        <div style={{
-          marginTop:20,
-          padding:10,
-          background:PANEL,
-          border:`1px solid ${BORDER}`,
-          borderRadius:6
-        }}>
-          Historique activé (placeholder)
+      {/* GLOBAL STATUS */}
+      <div style={{
+        background:PANEL,
+        border:`1px solid ${BORDER}`,
+        borderRadius:10,
+        padding:16,
+        marginBottom:20
+      }}>
+        <div style={{fontSize:12,opacity:.7}}>SIGNAL GLOBAL</div>
+        <div style={{fontSize:28,fontWeight:700,color:sentimentColor}}>
+          {sentiment}
         </div>
-      }
+        <div style={{fontSize:12,marginTop:4}}>
+          Score thermique : {thermalScore} / 6
+        </div>
+      </div>
+
+      {/* INDICATEURS */}
+      <Card
+        title="MVRV Percentile"
+        value={vals.mvrvPct?.toFixed(2)}
+        heat={heatColor(vals.mvrvPct, 0, 2)}
+      />
+
+      <Card
+        title="Mayer Multiple"
+        value={vals.mayerMultiple?.toFixed(2)}
+        heat={heatColor(vals.mayerMultiple, 0, 2)}
+      />
+
+      <Card
+        title="ETF Netflow"
+        value={vals.etfNetflow?.toFixed(2)}
+        heat={heatColor(-vals.etfNetflow, -50, 50)}
+      />
+
+      <Card
+        title="Futures Power"
+        value={vals.futuresPower}
+        heat={heatColor(vals.futuresPower, 0, 100)}
+      />
+
+      <Card
+        title="SOPR"
+        value={vals.soprRatio?.toFixed(2)}
+        heat={heatColor(vals.soprRatio, 0.9, 1.1)}
+      />
 
     </div>
   );
 }
 
-// Render
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCthermalAI />);
+ReactDOM.createRoot(document.getElementById("root")).render(<BTCThermalAI />);
