@@ -1,7 +1,8 @@
 const { useState, useEffect } = React;
 
-function BTCHedgeUltimate() {
+function BTCHedgeInstitutional() {
 
+  // ───────────── STATE ─────────────
   const [vals, setVals] = useState({
     price: 0,
     etfNetflow: 0,
@@ -20,7 +21,7 @@ function BTCHedgeUltimate() {
 
   const [loaded, setLoaded] = useState(false);
 
-  // Fetch JSON
+  // ───────────── FETCH JSON ─────────────
   useEffect(() => {
     fetch("btc_dashboard.json")
       .then(res => res.json())
@@ -52,12 +53,12 @@ function BTCHedgeUltimate() {
     return <div style={{color:"#fff",padding:40}}>Chargement...</div>;
   }
 
-  // Heat function
+  // ───────────── HEAT ENGINE ─────────────
   const heat = (v, low, mid, high) => {
-    if (v <= low) return { score: 9, color: "#22c55e" };
-    if (v <= mid) return { score: 6, color: "#fde047" };
-    if (v <= high) return { score: 4, color: "#f59e0b" };
-    return { score: 2, color: "#ef4444" };
+    if (v <= low) return { score: 9, color: "#22c55e" };   // Accumulation
+    if (v <= mid) return { score: 6, color: "#fde047" };   // Neutre
+    if (v <= high) return { score: 4, color: "#f59e0b" };  // Chaud
+    return { score: 2, color: "#ef4444" };                 // Risque top
   };
 
   const metrics = {
@@ -66,19 +67,20 @@ function BTCHedgeUltimate() {
     sharpe: heat(vals.sharpe, -20, 10, 40),
     sopr: heat(vals.sopr, 0.98, 1.02, 1.08),
     utxo: heat(vals.utxo, 3, 8, 15),
-    futures: heat(vals.futuresPower, 40, 55, 70)
+    futures: heat(vals.futuresPower, 40, 55, 70),
+    bullbear: heat(vals.bullBear30d, -0.2, 0.2, 0.6)
   };
 
   const scores = Object.values(metrics).map(m => m.score);
-  const thermalScore =
-    scores.reduce((a,b)=>a+b,0) / scores.length;
+  const thermalScore = scores.reduce((a,b)=>a+b,0) / scores.length;
 
+  // ───────────── REGIME ─────────────
   let regime = "NEUTRAL";
-  if (thermalScore >= 7.5) regime = "ACCUMULATION";
+  if (thermalScore >= 7.5) regime = "ACCUMULATION / BOTTOM ZONE";
   else if (thermalScore >= 6) regime = "EARLY BULL";
-  else if (thermalScore >= 4.5) regime = "LATE BULL";
+  else if (thermalScore >= 4.5) regime = "MID CYCLE";
   else if (thermalScore >= 3) regime = "DISTRIBUTION";
-  else regime = "TOP RISK";
+  else regime = "EUPHORIA / TOP RISK";
 
   const regimeColor =
     thermalScore >= 7 ? "#22c55e"
@@ -87,52 +89,108 @@ function BTCHedgeUltimate() {
     : thermalScore >= 3 ? "#f59e0b"
     : "#ef4444";
 
+  // ───────────── STYLES ─────────────
+  const page = {
+    background:"#020617",
+    minHeight:"100vh",
+    padding:24,
+    fontFamily:"Arial",
+    color:"#e5e7eb"
+  };
+
   const card = {
     background:"#0b1220",
     border:"1px solid #1f2937",
     borderRadius:10,
     padding:16,
-    marginBottom:16,
-    color:"#e5e7eb"
+    marginBottom:16
+  };
+
+  const sectionTitle = {
+    color:"#9ca3af",
+    fontSize:12,
+    marginBottom:8,
+    letterSpacing:1
   };
 
   const row = {
     display:"flex",
     justifyContent:"space-between",
-    padding:"6px 0"
+    padding:"6px 0",
+    fontSize:14
   };
 
+  const heatDot = (color) => ({
+    width:10,
+    height:10,
+    borderRadius:3,
+    background:color,
+    marginRight:8
+  });
+
+  const HeatRow = (label, value, metric) => (
+    <div style={row}>
+      <div style={{display:"flex",alignItems:"center"}}>
+        <div style={heatDot(metric.color)}></div>
+        {label}
+      </div>
+      <div>{value}</div>
+    </div>
+  );
+
+  // ───────────── UI ─────────────
   return (
-    <div style={{padding:24}}>
+    <div style={page}>
 
-      <h1 style={{color:"#fff"}}>BTC HEDGE++ ULTIMATE</h1>
-      <h2 style={{color:"#facc15"}}>${vals.price.toLocaleString()}</h2>
+      {/* HEADER */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:26,fontWeight:700}}>
+          BTC ON-CHAIN — HEDGE+++ INSTITUTIONAL
+        </div>
+        <div style={{fontSize:22,color:"#facc15"}}>
+          ${vals.price.toLocaleString()}
+        </div>
+      </div>
 
+      {/* GLOBAL SCORE */}
       <div style={{...card,border:`2px solid ${regimeColor}`}}>
-        <div>Thermal Score</div>
-        <div style={{fontSize:36,color:regimeColor}}>
+        <div style={{fontSize:12,color:"#9ca3af"}}>Thermal Score</div>
+        <div style={{fontSize:40,fontWeight:700,color:regimeColor}}>
           {thermalScore.toFixed(1)}
         </div>
         <div>{regime}</div>
       </div>
 
+      {/* ── Flux & Liquidité */}
       <div style={card}>
-        <b>Heatmap</b>
-        {Object.entries(metrics).map(([k,m])=>(
-          <div key={k} style={row}>
-            <span>{k}</span>
-            <span style={{color:m.color}}>
-              {vals[k] ?? vals.futuresPower}
-            </span>
-          </div>
-        ))}
+        <div style={sectionTitle}>── Flux & Liquidité</div>
+        <div style={row}><span>ETF Netflow 30D</span><span>{vals.etfNetflow} B$</span></div>
+        <div style={row}><span>USDT SMA(30)</span><span>{vals.usdtSma} B$</span></div>
+        <div style={row}><span>Net Taker Volume</span><span>{vals.ntvSellCount}</span></div>
       </div>
 
+      {/* ── Dérivés & Structure */}
       <div style={card}>
-        <b>Flux & Liquidité</b>
-        <div style={row}><span>ETF</span><span>{vals.etfNetflow}</span></div>
-        <div style={row}><span>USDT</span><span>{vals.usdtSma}</span></div>
-        <div style={row}><span>NTV</span><span>{vals.ntvSellCount}</span></div>
+        <div style={sectionTitle}>── Dérivés & Structure</div>
+        {HeatRow("Futures Power", vals.futuresPower, metrics.futures)}
+        {HeatRow("Bull/Bear 30D", vals.bullBear30d, metrics.bullbear)}
+      </div>
+
+      {/* ── Profitabilité & Holders */}
+      <div style={card}>
+        <div style={sectionTitle}>── Profitabilité & Holders</div>
+        {HeatRow("SOPR", vals.sopr, metrics.sopr)}
+        <div style={row}><span>STH NUPL</span><span>{vals.sthNupl}</span></div>
+        <div style={row}><span>Whales</span><span>{vals.whales}</span></div>
+        {HeatRow("UTXO P/L Ratio", vals.utxo, metrics.utxo)}
+      </div>
+
+      {/* ── Valorisation LT */}
+      <div style={card}>
+        <div style={sectionTitle}>── Valorisation Long Terme</div>
+        {HeatRow("MVRV Percentile", vals.mvrv, metrics.mvrv)}
+        {HeatRow("Mayer Multiple", vals.mayer, metrics.mayer)}
+        {HeatRow("Sharpe Ratio", vals.sharpe, metrics.sharpe)}
       </div>
 
     </div>
@@ -141,4 +199,4 @@ function BTCHedgeUltimate() {
 
 // Render
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCHedgeUltimate />);
+  .render(<BTCHedgeInstitutional />);
