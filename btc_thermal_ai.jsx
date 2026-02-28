@@ -230,32 +230,7 @@ useEffect(() => {
   };
 
 
-    // Build message content
-    const content = [
-      ...images.map(img => ({
-        type: "image",
-        source: { type: "base64", media_type: img.type, data: img.base64 }
-      })),
-      {
-        type: "text",
-        text: `Analyse ces ${images.length} capture(s) CryptoQuant et extrais toutes les valeurs disponibles en JSON strict selon les instructions du système.`
-      }
-    ];
 
-    try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content }]
-        })
-      });
-
-      const data = await resp.json();
-      const raw = data.content?.map(b => b.text || "").join("").trim();
 
       // Parse JSON
       let parsed;
