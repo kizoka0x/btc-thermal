@@ -2,15 +2,17 @@ const { useState, useEffect } = React;
 
 function BTCThermalAI() {
 
-  const PANEL = "#111827";
-  const BORDER = "#1f2937";
+  // ===== STYLE =====
+  const PANEL = "#0f172a";
+  const BORDER = "#1e293b";
   const TEXT = "#e5e7eb";
-  const MUTED = "#9ca3af";
-  const ACCENT = "#facc15";
+  const MUTED = "#94a3b8";
   const GREEN = "#22c55e";
-  const RED = "#ef4444";
   const ORANGE = "#f59e0b";
+  const RED = "#ef4444";
+  const YELLOW = "#facc15";
 
+  // ===== STATE =====
   const [vals, setVals] = useState({
     btcPrice: 0,
     mayer: 0,
@@ -21,16 +23,12 @@ function BTCThermalAI() {
   });
 
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [error, setError] = useState(false);
 
-  // ===== LOAD DASHBOARD JSON =====
+  // ===== LOAD JSON =====
   useEffect(() => {
     const loadData = async () => {
       try {
         const res = await fetch("btc_dashboard.json");
-
-        if (!res.ok) throw new Error("JSON introuvable");
-
         const data = await res.json();
 
         setVals({
@@ -42,32 +40,59 @@ function BTCThermalAI() {
           whales: data.whales || 0
         });
 
-        setLastUpdate(new Date().toISOString());
-        setError(false);
+        setLastUpdate(new Date().toLocaleString());
 
       } catch (err) {
-        console.error("Erreur chargement dashboard:", err);
-        setError(true);
+        console.error("Erreur dashboard:", err);
       }
     };
 
     loadData();
   }, []);
 
-  // ===== HELPERS =====
-  const heatColor = (value, min, max) => {
-    const pct = (value - min) / (max - min);
-    if (pct < 0.33) return GREEN;
-    if (pct < 0.66) return ORANGE;
-    return RED;
-  };
+  // ===== THERMAL SCORE =====
+  let score = 0;
 
-  const boxStyle = {
+  if (vals.mvrv < 10) score++;
+  if (vals.mayer < 0.8) score++;
+  if (vals.sopr < 1) score++;
+  if (vals.sharpe < -20) score++;
+  if (vals.whales > 0) score++;
+
+  const scorePct = (score / 5) * 100;
+
+  // ===== MARKET REGIME =====
+  let regime = "NEUTRE";
+  let regimeColor = YELLOW;
+
+  if (score >= 4) {
+    regime = "ZONE BOTTOM";
+    regimeColor = GREEN;
+  } else if (score <= 1) {
+    regime = "DISTRIBUTION";
+    regimeColor = RED;
+  } else if (score === 2) {
+    regime = "BEAR MARKET";
+    regimeColor = ORANGE;
+  }
+
+  // ===== PRICE ZONES =====
+  const price = vals.btcPrice;
+
+  const zones = [
+    { label: "$65–68K", text: "Distribution active", color: RED },
+    { label: "$58–63K", text: "CT probable", color: ORANGE },
+    { label: "$50–58K", text: "Bottom le plus probable", color: YELLOW },
+    { label: "$42–50K", text: "Capitulation extrême", color: "#a855f7" }
+  ];
+
+  const cardStyle = {
     background: PANEL,
     border: `1px solid ${BORDER}`,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 16
+    flex: 1,
+    minWidth: 180
   };
 
   // ===== UI =====
@@ -78,82 +103,105 @@ function BTCThermalAI() {
       <div style={{
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 20,
-        borderBottom: `1px solid ${BORDER}`,
-        paddingBottom: 12
+        marginBottom: 20
       }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>
-            BTC ON-CHAIN — TABLEAU THERMIQUE AI
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
+            BTC ON-CHAIN — DESK THERMIQUE
           </div>
-
           {lastUpdate && (
             <div style={{ fontSize: 12, color: GREEN }}>
               Dernière mise à jour : {lastUpdate}
             </div>
           )}
-
-          {error && (
-            <div style={{ fontSize: 12, color: RED }}>
-              Erreur chargement btc_dashboard.json
-            </div>
-          )}
         </div>
 
         <div style={{
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 700,
-          color: ACCENT
+          color: YELLOW
         }}>
-          ${(vals.btcPrice / 1000).toFixed(1)}K
+          ${(price / 1000).toFixed(1)}K
         </div>
       </div>
 
-      {/* INDICATORS */}
-      <div style={boxStyle}>
-        <div style={{ fontSize: 14, color: MUTED, marginBottom: 10 }}>
-          VALUATION
+      {/* SCORE + REGIME */}
+      <div style={{
+        background: PANEL,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20
+      }}>
+        <div style={{ marginBottom: 8 }}>
+          Score thermique : {score}/5
         </div>
 
-        {/* MVRV */}
-        <div style={{ marginBottom: 12 }}>
-          <div>MVRV Percentile</div>
+        <div style={{
+          height: 8,
+          background: BORDER,
+          borderRadius: 4,
+          overflow: "hidden",
+          marginBottom: 10
+        }}>
           <div style={{
-            height: 8,
-            background: heatColor(vals.mvrv, 0, 20),
-            borderRadius: 4,
-            marginTop: 4,
-            width: `${Math.min(vals.mvrv * 5, 100)}%`
+            width: scorePct + "%",
+            background: regimeColor,
+            height: "100%"
           }} />
-          <div style={{ fontSize: 12, color: MUTED }}>{vals.mvrv}</div>
         </div>
 
-        {/* MAYER */}
-        <div>
-          <div>Mayer Multiple</div>
-          <div style={{
-            height: 8,
-            background: heatColor(vals.mayer, 0.5, 2),
-            borderRadius: 4,
-            marginTop: 4,
-            width: `${Math.min(vals.mayer * 40, 100)}%`
-          }} />
-          <div style={{ fontSize: 12, color: MUTED }}>{vals.mayer}</div>
+        <div style={{ color: regimeColor, fontWeight: 600 }}>
+          {regime}
         </div>
       </div>
 
-      {/* MARKET STATE */}
-      <div style={boxStyle}>
-        <div style={{ fontSize: 14, color: MUTED, marginBottom: 10 }}>
-          MARKET METRICS
-        </div>
-
-        <div>SOPR : {vals.sopr}</div>
-        <div>Sharpe : {vals.sharpe}</div>
-        <div>Whales (1k-10k) : {vals.whales}</div>
+      {/* PRICE ZONES */}
+      <div style={{
+        display: "flex",
+        gap: 12,
+        flexWrap: "wrap",
+        marginBottom: 20
+      }}>
+        {zones.map((z, i) => (
+          <div key={i} style={cardStyle}>
+            <div style={{ fontWeight: 700 }}>{z.label}</div>
+            <div style={{ fontSize: 12, color: MUTED }}>{z.text}</div>
+          </div>
+        ))}
       </div>
 
+      {/* CONDITIONS BOTTOM */}
+      <div style={{
+        background: PANEL,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        padding: 16
+      }}>
+        <div style={{ marginBottom: 10 }}>
+          Conditions bottom
+        </div>
+
+        <Condition ok={vals.mvrv < 10} text="MVRV < 10%" />
+        <Condition ok={vals.mayer < 0.8} text="Mayer < 0.8" />
+        <Condition ok={vals.sopr < 1} text="SOPR < 1" />
+        <Condition ok={vals.sharpe < -20} text="Sharpe < -20" />
+        <Condition ok={vals.whales > 0} text="Accumulation whales" />
+      </div>
+
+    </div>
+  );
+}
+
+// ===== CONDITION COMPONENT =====
+function Condition({ ok, text }) {
+  return (
+    <div style={{
+      color: ok ? "#22c55e" : "#ef4444",
+      fontSize: 14,
+      marginBottom: 6
+    }}>
+      {ok ? "✓" : "✕"} {text}
     </div>
   );
 }
