@@ -1,166 +1,235 @@
-const { useState, useEffect } = React;
+import React, { useState, useEffect } from "react";
 
-function BTCFundDesk() {
+export default function BTCThermalAI() {
 
-  const PANEL = "#0f172a";
-  const BORDER = "#1e293b";
-  const TEXT = "#e5e7eb";
-  const MUTED = "#94a3b8";
-  const GREEN = "#22c55e";
-  const ORANGE = "#f59e0b";
-  const RED = "#ef4444";
-  const YELLOW = "#facc15";
+  // ───────── CONFIG UI ─────────
+  const BG = "#080c10";
+  const PANEL = "#0d1117";
+  const BORDER = "#1a2030";
+  const MUTED = "#4a5568";
 
-  const [d, setD] = useState({});
-  const [lastUpdate, setLastUpdate] = useState("");
+  // ───────── DATA STATE ─────────
+  const [vals, setVals] = useState({
+    btcPrice: 0,
 
-  // ─── LOAD DASHBOARD ─────────────────────────
+    // Flux & Liquidité
+    etfNetflow: 0,
+    usdtSma: 0,
+    ntv: 0,
+
+    // Dérivés
+    futuresPower: 0,
+    bullBear: 0,
+
+    // Holders
+    sopr: 0,
+    sthNupl: 0,
+    lthNupl: 0,
+    utxo: 0,
+    whales: 0,
+
+    // Valorisation
+    mvrv: 0,
+    mayer: 0,
+    sharpe: 0
+  });
+
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  // ───────── LOAD JSON ─────────
   useEffect(() => {
-
     const load = async () => {
       try {
-        const res = await fetch("btc_dashboard.json?cache=" + Date.now());
+        const res = await fetch("btc_dashboard.json?t=" + Date.now());
         const data = await res.json();
 
-        setD(data);
-        setLastUpdate(data.updated || "");
+        setVals(v => ({
+          ...v,
+          btcPrice: data.price || 0,
+          etfNetflow: data.etfNetflow || 0,
+          usdtSma: data.usdtSma || 0,
+          ntv: data.ntv || 0,
+          futuresPower: data.futuresPower || 0,
+          bullBear: data.bullBear || 0,
+          sopr: data.sopr || 0,
+          sthNupl: data.sthNupl || 0,
+          lthNupl: data.lthNupl || 0,
+          utxo: data.utxo || 0,
+          whales: data.whales || 0,
+          mvrv: data.mvrv || 0,
+          mayer: data.mayer || 0,
+          sharpe: data.sharpe || 0
+        }));
+
+        setLastUpdate(new Date().toLocaleString("fr-FR"));
       } catch (e) {
-        console.error("Erreur dashboard:", e);
+        console.error("Erreur chargement JSON", e);
       }
     };
 
     load();
-    const i = setInterval(load, 300000);
-    return () => clearInterval(i);
-
   }, []);
 
-  const price = d.btcPrice || 0;
+  // ───────── THERMAL SCORE ─────────
+  const score = [
+    vals.etfNetflow > 0 ? 7 : 3,
+    vals.usdtSma > 0 ? 7 : 3,
+    vals.futuresPower > 50 ? 7 : 3,
+    vals.bullBear > 0 ? 7 : 3,
+    vals.sopr > 1 ? 6 : 3,
+    vals.mvrv < 20 ? 8 : 4,
+    vals.mayer < 1 ? 7 : 4,
+    vals.sharpe < -10 ? 8 : 5,
+    vals.whales > 0 ? 7 : 4
+  ];
 
-  // ─── MODELE FUND (cycle) ─────────────────────
-  let bottom = 0;
-  let top = 0;
+  const avgScore = (
+    score.reduce((a, b) => a + b, 0) / score.length
+  ).toFixed(1);
 
-  if (d.mvrvPct < 0.3) bottom += 2;
-  if (d.mayerMultiple < 0.9) bottom += 2;
-  if (d.sharpeShort < -0.5) bottom += 1;
-  if (d.soprRatio < 1) bottom += 1;
-  if (d.sthNupl < 0.1) bottom += 1;
-  if (d.etfNetflow < 0) bottom += 1;
+  const phase =
+    avgScore <= 3
+      ? "CAPITULATION"
+      : avgScore <= 4.5
+      ? "BEAR"
+      : avgScore <= 6
+      ? "NEUTRE"
+      : avgScore <= 7.5
+      ? "ACCUMULATION"
+      : "BULL";
 
-  if (d.mvrvPct > 0.8) top += 2;
-  if (d.mayerMultiple > 2) top += 2;
-  if (d.soprRatio > 1.05) top += 1;
-  if (d.lthNupl > 0.6) top += 1;
-  if (d.futuresPower > 70) top += 1;
-  if (d.etfNetflow > 0) top += 1;
+  const phaseColor =
+    avgScore <= 3
+      ? "#ff4d4d"
+      : avgScore <= 4.5
+      ? "#ff8c42"
+      : avgScore <= 6
+      ? "#ffd166"
+      : avgScore <= 7.5
+      ? "#69db7c"
+      : "#2ecc71";
 
-  const bottomProb = Math.min(100, bottom * 15);
-  const topProb = Math.min(100, top * 15);
-  const marketScore = Math.max(0, Math.min(100, 50 + bottomProb - topProb));
+  // ───────── ROW COMPONENT ─────────
+  const Row = ({ name, value }) => (
+    <tr style={{ borderBottom: "1px solid rgba(255,255,255,.05)" }}>
+      <td style={{ padding: "8px 10px", color: "#e6edf3" }}>{name}</td>
+      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#c9d1d9" }}>
+        {value}
+      </td>
+    </tr>
+  );
 
-  // Phase
-  let phase = "Neutral";
-  let phaseColor = MUTED;
+  const Section = ({ title }) => (
+    <tr>
+      <td colSpan="2" style={{
+        padding: "6px 10px",
+        color: "#58a6ff",
+        fontSize: 11,
+        fontFamily: "monospace",
+        letterSpacing: 1.5,
+        borderTop: `1px solid ${BORDER}`
+      }}>
+        {title}
+      </td>
+    </tr>
+  );
 
-  if (bottomProb > 60) { phase = "Accumulation"; phaseColor = GREEN; }
-  else if (marketScore > 65) { phase = "Expansion"; phaseColor = GREEN; }
-  else if (topProb > 60) { phase = "Distribution"; phaseColor = ORANGE; }
-  else if (topProb > 80) { phase = "Cycle Top Risk"; phaseColor = RED; }
-
-  // ─── UI helpers ─────────────────────────
-  const card = {
-    background: PANEL,
-    border: `1px solid ${BORDER}`,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16
-  };
-
-  const sectionTitle = {
-    fontSize: 13,
-    color: MUTED,
-    marginBottom: 10,
-    fontWeight: 600
-  };
-
-  const row = {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 6,
-    fontFamily: "monospace"
-  };
-
-  const fmt = v => (v === undefined || v === null) ? "-" : Number(v).toFixed(3);
-
+  // ───────── UI ─────────
   return (
-    <div style={{ padding: 24, color: TEXT, fontFamily: "Arial" }}>
+    <div style={{
+      background: BG,
+      color: "#c9d1d9",
+      minHeight: "100vh",
+      padding: 18,
+      fontFamily: "Segoe UI"
+    }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        borderBottom: `1px solid ${BORDER}`,
+        paddingBottom: 12,
+        marginBottom: 16
+      }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>
-            BTC FUND+ DASHBOARD
+          <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 700 }}>
+            BTC THERMAL HEDGE+
           </div>
-          <div style={{ fontSize: 12, color: GREEN }}>
-            Update : {lastUpdate}
+          {lastUpdate && (
+            <div style={{ fontSize: 11, color: "#2ecc71" }}>
+              Mise à jour : {lastUpdate}
+            </div>
+          )}
+        </div>
+
+        <div style={{ textAlign: "right" }}>
+          <div style={{
+            fontFamily: "monospace",
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#ffe066"
+          }}>
+            ${(vals.btcPrice / 1000).toFixed(1)}K
+          </div>
+          <div style={{ color: phaseColor, fontSize: 12 }}>
+            Phase : {phase}
+          </div>
+        </div>
+      </div>
+
+      {/* SCORE CARDS */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+        marginBottom: 16
+      }}>
+        <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: 12, borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: MUTED }}>Score thermique</div>
+          <div style={{ fontSize: 26, fontFamily: "monospace", color: phaseColor }}>
+            {avgScore}
           </div>
         </div>
 
-        <div style={{ fontSize: 34, fontWeight: 700, color: YELLOW }}>
-          ${(price / 1000).toFixed(1)}K
+        <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: 12, borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: MUTED }}>Régime marché</div>
+          <div style={{ fontSize: 20, fontFamily: "monospace", color: phaseColor }}>
+            {phase}
+          </div>
         </div>
       </div>
 
-      {/* PHASE */}
-      <div style={{ ...card, borderLeft: `4px solid ${phaseColor}` }}>
-        <div style={{ fontSize: 12, color: MUTED }}>Cycle Phase</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: phaseColor }}>
-          {phase}
-        </div>
-        <div style={{ marginTop: 8, fontFamily: "monospace" }}>
-          Market Score : {Math.round(marketScore)} | Bottom : {bottomProb}% | Top : {topProb}%
-        </div>
-      </div>
+      {/* TABLE */}
+      <div style={{ background: PANEL, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <tbody>
 
-      {/* ── Flux & Liquidité */}
-      <div style={card}>
-        <div style={sectionTitle}>── Flux & Liquidité</div>
-        <div style={row}><span>ETF Netflow 30D</span><span>{fmt(d.etfNetflow)}</span></div>
-        <div style={row}><span>USDT Stablecoin SMA(30)</span><span>{fmt(d.usdtSma)}</span></div>
-        <div style={row}><span>Net Taker Volume</span><span>{fmt(d.ntvSellCount)}</span></div>
-      </div>
+            <Section title="── Flux & Liquidité" />
+            <Row name="ETF Netflow 30D" value={`${vals.etfNetflow} B$`} />
+            <Row name="USDT SMA(30)" value={`${vals.usdtSma} B$`} />
+            <Row name="Net Taker Volume" value={vals.ntv} />
 
-      {/* ── Dérivés */}
-      <div style={card}>
-        <div style={sectionTitle}>── Dérivés & Structure de marché</div>
-        <div style={row}><span>Futures Power</span><span>{fmt(d.futuresPower)}</span></div>
-        <div style={row}><span>Bull/Bear 30D</span><span>{fmt(d.bullBear30d)}</span></div>
-        <div style={row}><span>Bull/Bear 365D</span><span>{fmt(d.bullBear365d)}</span></div>
-      </div>
+            <Section title="── Dérivés & Structure" />
+            <Row name="Futures Power" value={`${vals.futuresPower}%`} />
+            <Row name="Bull/Bear Indicator" value={vals.bullBear} />
 
-      {/* ── Holders */}
-      <div style={card}>
-        <div style={sectionTitle}>── Profitabilité & Comportement</div>
-        <div style={row}><span>SOPR</span><span>{fmt(d.soprRatio)}</span></div>
-        <div style={row}><span>STH NUPL</span><span>{fmt(d.sthNupl)}</span></div>
-        <div style={row}><span>LTH NUPL</span><span>{fmt(d.lthNupl)}</span></div>
-        <div style={row}><span>UTXO P/L Ratio</span><span>{fmt(d.utxoRatio)}</span></div>
-        <div style={row}><span>Whales 1k–10k</span><span>{fmt(d.whales1k10k)}</span></div>
-      </div>
+            <Section title="── Profitabilité & Holders" />
+            <Row name="SOPR Ratio" value={vals.sopr} />
+            <Row name="STH NUPL" value={vals.sthNupl} />
+            <Row name="LTH NUPL" value={vals.lthNupl} />
+            <Row name="UTXO P/L Ratio" value={vals.utxo} />
+            <Row name="Whales 1k-10k (60D)" value={vals.whales} />
 
-      {/* ── Valorisation */}
-      <div style={card}>
-        <div style={sectionTitle}>── Valorisation & Risque Long Terme</div>
-        <div style={row}><span>MVRV Percentile</span><span>{fmt(d.mvrvPct)}</span></div>
-        <div style={row}><span>Mayer Multiple</span><span>{fmt(d.mayerMultiple)}</span></div>
-        <div style={row}><span>Sharpe (court terme)</span><span>{fmt(d.sharpeShort)}</span></div>
-        <div style={row}><span>Thermal Score</span><span>{fmt(d.thermalScore)}</span></div>
+            <Section title="── Valorisation & Risque LT" />
+            <Row name="MVRV Percentile" value={`${vals.mvrv}%`} />
+            <Row name="Mayer Multiple" value={vals.mayer} />
+            <Row name="Sharpe Ratio" value={vals.sharpe} />
+
+          </tbody>
+        </table>
       </div>
 
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCFundDesk />);
