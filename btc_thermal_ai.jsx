@@ -1,6 +1,6 @@
 const { useState, useEffect } = React;
 
-function BTCHedgeInstitutional() {
+function BTCDashboardFund() {
 
   // ───────────── STATE ─────────────
   const [vals, setVals] = useState({
@@ -13,15 +13,16 @@ function BTCHedgeInstitutional() {
     sopr: 0,
     sthNupl: 0,
     utxo: 0,
+    whales: 0,
+    spentBands: 0,
     mvrv: 0,
     mayer: 0,
-    sharpe: 0,
-    whales: 0
+    sharpe: 0
   });
 
   const [loaded, setLoaded] = useState(false);
 
-  // ───────────── FETCH JSON ─────────────
+  // ───────────── LOAD JSON ─────────────
   useEffect(() => {
     fetch("btc_dashboard.json")
       .then(res => res.json())
@@ -36,32 +37,33 @@ function BTCHedgeInstitutional() {
           sopr: data.sopr || 0,
           sthNupl: data.sthNupl || 0,
           utxo: data.utxo || 0,
+          whales: data.whales || 0,
+          spentBands: data.spentBands || 0,
           mvrv: data.mvrv || 0,
           mayer: data.mayer || 0,
-          sharpe: data.sharpe || 0,
-          whales: data.whales || 0
+          sharpe: data.sharpe || 0
         });
         setLoaded(true);
       })
       .catch(err => {
-        console.error("Erreur JSON:", err);
+        console.error("Erreur btc_dashboard.json", err);
         setLoaded(true);
       });
   }, []);
 
   if (!loaded) {
-    return <div style={{color:"#fff",padding:40}}>Chargement...</div>;
+    return <div style={{color:"#fff",padding:40}}>Chargement dashboard...</div>;
   }
 
-  // ───────────── HEAT ENGINE ─────────────
+  // ───────────── FUND HEAT MODEL ─────────────
   const heat = (v, low, mid, high) => {
-    if (v <= low) return { score: 9, color: "#22c55e" };   // Accumulation
-    if (v <= mid) return { score: 6, color: "#fde047" };   // Neutre
-    if (v <= high) return { score: 4, color: "#f59e0b" };  // Chaud
-    return { score: 2, color: "#ef4444" };                 // Risque top
+    if (v <= low) return { score: 9, color:"#22c55e" };   // accumulation
+    if (v <= mid) return { score: 6, color:"#fde047" };   // neutre
+    if (v <= high) return { score: 4, color:"#f59e0b" };  // chaud
+    return { score: 2, color:"#ef4444" };                 // euphorie
   };
 
-  const metrics = {
+  const model = {
     mvrv: heat(vals.mvrv, 15, 50, 80),
     mayer: heat(vals.mayer, 0.8, 1.4, 2),
     sharpe: heat(vals.sharpe, -20, 10, 40),
@@ -71,22 +73,22 @@ function BTCHedgeInstitutional() {
     bullbear: heat(vals.bullBear30d, -0.2, 0.2, 0.6)
   };
 
-  const scores = Object.values(metrics).map(m => m.score);
-  const thermalScore = scores.reduce((a,b)=>a+b,0) / scores.length;
+  const scores = Object.values(model).map(m => m.score);
+  const fundScore = scores.reduce((a,b)=>a+b,0) / scores.length;
 
   // ───────────── REGIME ─────────────
   let regime = "NEUTRAL";
-  if (thermalScore >= 7.5) regime = "ACCUMULATION / BOTTOM ZONE";
-  else if (thermalScore >= 6) regime = "EARLY BULL";
-  else if (thermalScore >= 4.5) regime = "MID CYCLE";
-  else if (thermalScore >= 3) regime = "DISTRIBUTION";
-  else regime = "EUPHORIA / TOP RISK";
+  if (fundScore >= 7.5) regime = "ACCUMULATION / BOTTOM";
+  else if (fundScore >= 6) regime = "EARLY BULL";
+  else if (fundScore >= 4.5) regime = "MID CYCLE";
+  else if (fundScore >= 3) regime = "DISTRIBUTION";
+  else regime = "EUPHORIA / TOP";
 
   const regimeColor =
-    thermalScore >= 7 ? "#22c55e"
-    : thermalScore >= 6 ? "#a3e635"
-    : thermalScore >= 4.5 ? "#fde047"
-    : thermalScore >= 3 ? "#f59e0b"
+    fundScore >= 7 ? "#22c55e"
+    : fundScore >= 6 ? "#a3e635"
+    : fundScore >= 4.5 ? "#fde047"
+    : fundScore >= 3 ? "#f59e0b"
     : "#ef4444";
 
   // ───────────── STYLES ─────────────
@@ -106,7 +108,7 @@ function BTCHedgeInstitutional() {
     marginBottom:16
   };
 
-  const sectionTitle = {
+  const section = {
     color:"#9ca3af",
     fontSize:12,
     marginBottom:8,
@@ -120,7 +122,7 @@ function BTCHedgeInstitutional() {
     fontSize:14
   };
 
-  const heatDot = (color) => ({
+  const dot = (color) => ({
     width:10,
     height:10,
     borderRadius:3,
@@ -131,7 +133,7 @@ function BTCHedgeInstitutional() {
   const HeatRow = (label, value, metric) => (
     <div style={row}>
       <div style={{display:"flex",alignItems:"center"}}>
-        <div style={heatDot(metric.color)}></div>
+        <div style={dot(metric.color)}></div>
         {label}
       </div>
       <div>{value}</div>
@@ -145,52 +147,53 @@ function BTCHedgeInstitutional() {
       {/* HEADER */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:26,fontWeight:700}}>
-          BTC ON-CHAIN — HEDGE+++ INSTITUTIONAL
+          BTC DASHBOARD — FUND QUANT
         </div>
         <div style={{fontSize:22,color:"#facc15"}}>
           ${vals.price.toLocaleString()}
         </div>
       </div>
 
-      {/* GLOBAL SCORE */}
+      {/* FUND SCORE */}
       <div style={{...card,border:`2px solid ${regimeColor}`}}>
-        <div style={{fontSize:12,color:"#9ca3af"}}>Thermal Score</div>
+        <div style={{fontSize:12,color:"#9ca3af"}}>Fund Composite Score</div>
         <div style={{fontSize:40,fontWeight:700,color:regimeColor}}>
-          {thermalScore.toFixed(1)}
+          {fundScore.toFixed(1)}
         </div>
         <div>{regime}</div>
       </div>
 
       {/* ── Flux & Liquidité */}
       <div style={card}>
-        <div style={sectionTitle}>── Flux & Liquidité</div>
-        <div style={row}><span>ETF Netflow 30D</span><span>{vals.etfNetflow} B$</span></div>
-        <div style={row}><span>USDT SMA(30)</span><span>{vals.usdtSma} B$</span></div>
-        <div style={row}><span>Net Taker Volume</span><span>{vals.ntvSellCount}</span></div>
+        <div style={section}>── Flux & Liquidité</div>
+        <div style={row}><span>ETF Netflow 30D Sum</span><span>{vals.etfNetflow}</span></div>
+        <div style={row}><span>USDT Stablecoin SMA(30)</span><span>{vals.usdtSma}</span></div>
+        <div style={row}><span>Net Taker Volume Binance</span><span>{vals.ntvSellCount}</span></div>
       </div>
 
       {/* ── Dérivés & Structure */}
       <div style={card}>
-        <div style={sectionTitle}>── Dérivés & Structure</div>
-        {HeatRow("Futures Power", vals.futuresPower, metrics.futures)}
-        {HeatRow("Bull/Bear 30D", vals.bullBear30d, metrics.bullbear)}
+        <div style={section}>── Dérivés & Structure de marché</div>
+        {HeatRow("Futures Power 30D Change", vals.futuresPower, model.futures)}
+        {HeatRow("Bull/Bear Cycle Indicator", vals.bullBear30d, model.bullbear)}
       </div>
 
       {/* ── Profitabilité & Holders */}
       <div style={card}>
-        <div style={sectionTitle}>── Profitabilité & Holders</div>
-        {HeatRow("SOPR", vals.sopr, metrics.sopr)}
-        <div style={row}><span>STH NUPL</span><span>{vals.sthNupl}</span></div>
-        <div style={row}><span>Whales</span><span>{vals.whales}</span></div>
-        {HeatRow("UTXO P/L Ratio", vals.utxo, metrics.utxo)}
+        <div style={section}>── Profitabilité & Comportement des holders</div>
+        {HeatRow("LTH/STH SOPR Ratio", vals.sopr, model.sopr)}
+        <div style={row}><span>aLTH/aSTH NUPL</span><span>{vals.sthNupl}</span></div>
+        {HeatRow("UTXO Block P/L Count Ratio", vals.utxo, model.utxo)}
+        <div style={row}><span>Accumulation Cohortes (60D)</span><span>{vals.whales}</span></div>
+        <div style={row}><span>Spent Output Value Bands</span><span>{vals.spentBands}</span></div>
       </div>
 
-      {/* ── Valorisation LT */}
+      {/* ── Valorisation & Risque LT */}
       <div style={card}>
-        <div style={sectionTitle}>── Valorisation Long Terme</div>
-        {HeatRow("MVRV Percentile", vals.mvrv, metrics.mvrv)}
-        {HeatRow("Mayer Multiple", vals.mayer, metrics.mayer)}
-        {HeatRow("Sharpe Ratio", vals.sharpe, metrics.sharpe)}
+        <div style={section}>── Valorisation & Risque Long Terme</div>
+        {HeatRow("MVRV Percentile — Cycle", vals.mvrv, model.mvrv)}
+        {HeatRow("Mayer Multiple", vals.mayer, model.mayer)}
+        {HeatRow("Sharpe Ratio (court terme)", vals.sharpe, model.sharpe)}
       </div>
 
     </div>
@@ -199,4 +202,4 @@ function BTCHedgeInstitutional() {
 
 // Render
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCHedgeInstitutional />);
+  .render(<BTCDashboardFund />);
