@@ -1,8 +1,8 @@
 const { useState, useEffect } = React;
 
-function BTCDashboardFund() {
+function BTCDashboardCIO() {
 
-  // ───────────── STATE ─────────────
+  // ───────── STATE ─────────
   const [vals, setVals] = useState({
     price: 0,
     etfNetflow: 0,
@@ -22,7 +22,7 @@ function BTCDashboardFund() {
 
   const [loaded, setLoaded] = useState(false);
 
-  // ───────────── LOAD JSON ─────────────
+  // ───────── LOAD JSON ─────────
   useEffect(() => {
     fetch("btc_dashboard.json")
       .then(res => res.json())
@@ -52,15 +52,15 @@ function BTCDashboardFund() {
   }, []);
 
   if (!loaded) {
-    return <div style={{color:"#fff",padding:40}}>Chargement dashboard...</div>;
+    return <div style={{color:"#fff",padding:40}}>Chargement BTC Dashboard...</div>;
   }
 
-  // ───────────── FUND HEAT MODEL ─────────────
+  // ───────── HEAT MODEL (institutional) ─────────
   const heat = (v, low, mid, high) => {
-    if (v <= low) return { score: 9, color:"#22c55e" };   // accumulation
-    if (v <= mid) return { score: 6, color:"#fde047" };   // neutre
-    if (v <= high) return { score: 4, color:"#f59e0b" };  // chaud
-    return { score: 2, color:"#ef4444" };                 // euphorie
+    if (v <= low) return { score: 9, color:"#22c55e" };
+    if (v <= mid) return { score: 6, color:"#fde047" };
+    if (v <= high) return { score: 4, color:"#f59e0b" };
+    return { score: 2, color:"#ef4444" };
   };
 
   const model = {
@@ -74,24 +74,35 @@ function BTCDashboardFund() {
   };
 
   const scores = Object.values(model).map(m => m.score);
-  const fundScore = scores.reduce((a,b)=>a+b,0) / scores.length;
+  const composite = scores.reduce((a,b)=>a+b,0) / scores.length;
 
-  // ───────────── REGIME ─────────────
+  // ───────── MARKET REGIME ─────────
   let regime = "NEUTRAL";
-  if (fundScore >= 7.5) regime = "ACCUMULATION / BOTTOM";
-  else if (fundScore >= 6) regime = "EARLY BULL";
-  else if (fundScore >= 4.5) regime = "MID CYCLE";
-  else if (fundScore >= 3) regime = "DISTRIBUTION";
-  else regime = "EUPHORIA / TOP";
+  if (composite >= 7.5) regime = "ACCUMULATION";
+  else if (composite >= 6) regime = "EARLY BULL";
+  else if (composite >= 4.5) regime = "MID CYCLE";
+  else if (composite >= 3) regime = "DISTRIBUTION";
+  else regime = "EUPHORIA";
 
   const regimeColor =
-    fundScore >= 7 ? "#22c55e"
-    : fundScore >= 6 ? "#a3e635"
-    : fundScore >= 4.5 ? "#fde047"
-    : fundScore >= 3 ? "#f59e0b"
+    composite >= 7 ? "#22c55e"
+    : composite >= 6 ? "#a3e635"
+    : composite >= 4.5 ? "#fde047"
+    : composite >= 3 ? "#f59e0b"
     : "#ef4444";
 
-  // ───────────── STYLES ─────────────
+  // ───────── CIO FAIR VALUE MODEL ─────────
+  const fairValue = vals.price * (composite / 5);
+  const bottomZone = fairValue * 0.7;
+  const topZone = fairValue * 1.5;
+
+  let cioSignal = "HOLD";
+  if (vals.price < bottomZone) cioSignal = "STRONG BUY";
+  else if (vals.price < fairValue) cioSignal = "ACCUMULATE";
+  else if (vals.price > topZone) cioSignal = "RISK OFF";
+  else if (composite < 3.5) cioSignal = "REDUCE";
+
+  // ───────── STYLES ─────────
   const page = {
     background:"#020617",
     minHeight:"100vh",
@@ -140,30 +151,37 @@ function BTCDashboardFund() {
     </div>
   );
 
-  // ───────────── UI ─────────────
+  // ───────── UI ─────────
   return (
     <div style={page}>
 
       {/* HEADER */}
       <div style={{marginBottom:20}}>
-        <div style={{fontSize:26,fontWeight:700}}>
-          BTC DASHBOARD — FUND QUANT
+        <div style={{fontSize:28,fontWeight:700}}>
+          BTC DASHBOARD — CIO MODEL
         </div>
         <div style={{fontSize:22,color:"#facc15"}}>
           ${vals.price.toLocaleString()}
         </div>
       </div>
 
-      {/* FUND SCORE */}
+      {/* CIO PANEL */}
       <div style={{...card,border:`2px solid ${regimeColor}`}}>
-        <div style={{fontSize:12,color:"#9ca3af"}}>Fund Composite Score</div>
-        <div style={{fontSize:40,fontWeight:700,color:regimeColor}}>
-          {fundScore.toFixed(1)}
+        <div style={{fontSize:12,color:"#9ca3af"}}>Composite Score</div>
+        <div style={{fontSize:36,fontWeight:700,color:regimeColor}}>
+          {composite.toFixed(1)}
         </div>
         <div>{regime}</div>
+
+        <div style={{marginTop:10,fontSize:13}}>
+          Fair Value: ${fairValue.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
+          Bottom Zone: ${bottomZone.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
+          Top Zone: ${topZone.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
+          <b>CIO Signal: {cioSignal}</b>
+        </div>
       </div>
 
-      {/* ── Flux & Liquidité */}
+      {/* Flux & Liquidité */}
       <div style={card}>
         <div style={section}>── Flux & Liquidité</div>
         <div style={row}><span>ETF Netflow 30D Sum</span><span>{vals.etfNetflow}</span></div>
@@ -171,14 +189,14 @@ function BTCDashboardFund() {
         <div style={row}><span>Net Taker Volume Binance</span><span>{vals.ntvSellCount}</span></div>
       </div>
 
-      {/* ── Dérivés & Structure */}
+      {/* Dérivés */}
       <div style={card}>
         <div style={section}>── Dérivés & Structure de marché</div>
         {HeatRow("Futures Power 30D Change", vals.futuresPower, model.futures)}
         {HeatRow("Bull/Bear Cycle Indicator", vals.bullBear30d, model.bullbear)}
       </div>
 
-      {/* ── Profitabilité & Holders */}
+      {/* Holders */}
       <div style={card}>
         <div style={section}>── Profitabilité & Comportement des holders</div>
         {HeatRow("LTH/STH SOPR Ratio", vals.sopr, model.sopr)}
@@ -188,7 +206,7 @@ function BTCDashboardFund() {
         <div style={row}><span>Spent Output Value Bands</span><span>{vals.spentBands}</span></div>
       </div>
 
-      {/* ── Valorisation & Risque LT */}
+      {/* Valorisation */}
       <div style={card}>
         <div style={section}>── Valorisation & Risque Long Terme</div>
         {HeatRow("MVRV Percentile — Cycle", vals.mvrv, model.mvrv)}
@@ -200,6 +218,6 @@ function BTCDashboardFund() {
   );
 }
 
-// Render
+// Render (Babel compatible)
 ReactDOM.createRoot(document.getElementById("root"))
-  .render(<BTCDashboardFund />);
+  .render(<BTCDashboardCIO />);
