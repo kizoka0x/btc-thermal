@@ -1,23 +1,39 @@
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await fetch("/btc_dashboard.json?t=" + Date.now());
+      const data = await res.json();
+
 setVals(prev => ({
   ...prev,
-  btcPrice: data.price ?? prev.btcPrice,
-  mayerMultiple: data.mayer ?? prev.mayerMultiple,
-  mvrvPct: data.mvrv ?? prev.mvrvPct,
-  bullBear30d: data.bullbear_30d ?? prev.bullBear30d,
-  bullBear365d: data.bullbear_365d ?? prev.bullBear365d,
-  sharpeShort: data.sharpe ?? prev.sharpeShort,
-  etfNetflow: data.etf_flow_30d ?? prev.etfNetflow,
-  usdtSma: data.usdt_sma30 ?? prev.usdtSma,
-  futuresPower: data.futures_power ?? prev.futuresPower,
-  ntvSellCount: data.ntv_sell_count ?? prev.ntvSellCount,
-  whales1k10k: data.whales_1k_10k ?? prev.whales1k10k,
-  date: data.last_update ?? prev.date
+  btcPrice: data.btcPrice ?? prev.btcPrice,
+  mayerMultiple: data.mayerMultiple ?? prev.mayerMultiple,
+  mvrvPct: data.mvrvPct ?? prev.mvrvPct,
+  bullBear30d: data.bullBear30d ?? prev.bullBear30d,
+  bullBear365d: data.bullBear365d ?? prev.bullBear365d,
+  sharpeShort: data.sharpeShort ?? prev.sharpeShort,
+  etfNetflow: data.etfNetflow ?? prev.etfNetflow,
+  usdtSma: data.usdtSma ?? prev.usdtSma,
+  futuresPower: data.futuresPower ?? prev.futuresPower,
+  ntvSellCount: data.ntvSellCount ?? prev.ntvSellCount,
+  whales1k10k: data.whales1k10k ?? prev.whales1k10k
 }));
 
+ if (data.updated) {
+        setLastUpdate(data.updated);
+      }
 
-  fetchData(); // charge au démarrage
-  const interval = setInterval(fetchData, 300000); // recharge toutes les 5 min
+      console.log("Dashboard synchronisé :", data.updated);
+
+    } catch (e) {
+      console.log("Erreur chargement btc_dashboard.json", e);
+    }
+  };
+
+  fetchData();
+  const interval = setInterval(fetchData, 300000);
   return () => clearInterval(interval);
+
 }, []);
 
 // ─── THERMAL SCORE CALCULATORS ────────────────────────────────────────────
