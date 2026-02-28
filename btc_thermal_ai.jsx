@@ -1,162 +1,278 @@
-const { useState, useEffect } = React;
+import React, { useState } from "react";
 
-const PANEL = "#0b1220";
-const BORDER = "#1f2a3a";
-const GREEN = "#2ecc71";
-const RED = "#ff4d4f";
-const ORANGE = "#f39c12";
-const YELLOW = "#f1c40f";
+const BORDER = "rgba(255,255,255,.08)";
+const PANEL = "#0d1117";
+const MUTED = "#8b949e";
 
-function heatColor(v, min, max) {
-  if (v === undefined || v === null) return "#555";
-  const pct = (v - min) / (max - min);
-  if (pct < 0.3) return GREEN;
-  if (pct < 0.6) return YELLOW;
-  if (pct < 0.8) return ORANGE;
-  return RED;
-}
+/* =========================
+   COULEURS THERMIQUES
+========================= */
+const LEVEL = {
+  0: { bg: "#161b22", color: "#8b949e" }, // neutre
+  1: { bg: "#3a1f1f", color: "#ff6b6b" }, // bear
+  2: { bg: "#5c2e00", color: "#ffa657" }, // pression
+  3: { bg: "#7a6b00", color: "#f2cc60" }, // watch
+  4: { bg: "#0f3d2e", color: "#3fb950" }  // accum
+};
 
-function Card({ title, value, heat }) {
+const TC = ({ level = 0, label }) => {
+  const l = LEVEL[level] || LEVEL[0];
   return (
-    <div style={{
-      background: PANEL,
-      border: `1px solid ${BORDER}`,
-      borderRadius: 8,
-      padding: 14,
-      marginBottom: 10
-    }}>
-      <div style={{fontSize:12,opacity:.7}}>{title}</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
-        <div style={{fontSize:18,fontWeight:700}}>
-          {value}
-        </div>
-        <div style={{
-          width:80,
-          height:8,
-          borderRadius:4,
-          background: heat
-        }} />
+    <td style={{ padding: 4, textAlign: "center" }}>
+      <div
+        style={{
+          background: l.bg,
+          color: l.color,
+          fontSize: 10,
+          fontWeight: 600,
+          padding: "6px 4px",
+          borderRadius: 6,
+          border: `1px solid ${BORDER}`,
+          fontFamily: "monospace",
+          letterSpacing: 0.5
+        }}
+      >
+        {label || ""}
       </div>
+    </td>
+  );
+};
+
+const Badge = ({ level = 0 }) => {
+  const l = LEVEL[level] || LEVEL[0];
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        padding: "4px 10px",
+        borderRadius: 20,
+        background: l.bg,
+        color: l.color,
+        fontSize: 10,
+        fontWeight: 600,
+        border: `1px solid ${BORDER}`,
+        fontFamily: "monospace"
+      }}
+    >
+      {level >= 4
+        ? "ACCUM"
+        : level === 3
+        ? "WATCH"
+        : level === 2
+        ? "PRESSION"
+        : level === 1
+        ? "BEAR"
+        : "NEUTRE"}
     </div>
   );
-}
+};
 
-function BTCThermalAI() {
-  const [vals, setVals] = useState({});
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [thermalScore, setThermalScore] = useState(0);
+const SectionRow = ({ label }) => (
+  <tr>
+    <td
+      colSpan={7}
+      style={{
+        padding: "10px 12px",
+        fontSize: 10,
+        color: "#58a6ff",
+        letterSpacing: 2,
+        fontFamily: "monospace",
+        borderTop: `1px solid ${BORDER}`,
+        borderBottom: `1px solid ${BORDER}`,
+        background: "linear-gradient(90deg, rgba(88,166,255,.08), transparent)"
+      }}
+    >
+      — {label.toUpperCase()}
+    </td>
+  </tr>
+);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("/btc_dashboard.json?t=" + Date.now());
-        const data = await res.json();
+/* =========================
+   COMPOSANT PRINCIPAL
+========================= */
+export default function BTCThermiqueProd() {
+  const [vals] = useState({
+    btcPrice: 64200,
+    mayer: 0.71,
+    mvrv: 8,
+    sopr: 0.99,
+    sharpe: -34,
+    whales: 91000
+  });
 
-        setVals(data);
-        setLastUpdate(data.updated);
+  const rows = [
+    {
+      sec: "Profitabilité & Holders",
+      name: "LTH/STH SOPR",
+      val: vals.sopr.toFixed(2),
+      sub: "Sous 1 = stress",
+      sc: { n: vals.sopr < 1 ? 1 : 3, c: 1, m: 2, l: 3 },
+      nowL: "STRESS",
+      hz: "MT"
+    },
+    {
+      name: "aLTH/aSTH NUPL",
+      val: "STH sous eau",
+      sub: "",
+      sc: { n: 1, c: 1, m: 2, l: 4 },
+      nowL: "SOUS EAU",
+      hz: "CT/MT"
+    },
+    {
+      name: "UTXO P/L Ratio",
+      val: "11.1",
+      sub: "loin du flag",
+      sc: { n: 2, c: 2, m: 3, l: 4 },
+      nowL: "NEUTRE",
+      hz: "MT/LT"
+    },
 
-        // Score thermique simple (production stable)
-        let score = 0;
-        if (data.mvrvPct < 1) score += 1;
-        if (data.mayerMultiple < 1) score += 1;
-        if (data.etfNetflow < 0) score += 1;
-        if (data.bullBear30d < 0) score += 1;
-        if (data.futuresPower < 50) score += 1;
-        if (data.soprRatio < 1) score += 1;
+    {
+      sec: "Valorisation long terme",
+      name: "MVRV Percentile",
+      val: vals.mvrv + "%",
+      sub: "zone basse",
+      sc: { n: vals.mvrv < 10 ? 4 : 2, c: 1, m: 2, l: 4 },
+      nowL: "PLANCHER",
+      hz: "LT"
+    },
+    {
+      name: "Mayer Multiple",
+      val: vals.mayer.toFixed(2),
+      sub: "oversold",
+      sc: { n: vals.mayer < 0.8 ? 4 : 2, c: 1, m: 2, l: 4 },
+      nowL: "OVERSOLD",
+      hz: "LT"
+    },
+    {
+      name: "Sharpe Ratio",
+      val: vals.sharpe,
+      sub: "low risk",
+      sc: { n: vals.sharpe < -20 ? 4 : 2, c: 1, m: 2, l: 4 },
+      nowL: "LOW RISK",
+      hz: "LT"
+    },
 
-        setThermalScore(score);
-
-      } catch (e) {
-        console.log("Erreur chargement dashboard", e);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 300000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const sentiment =
-    thermalScore >= 5 ? "BEARISH" :
-    thermalScore <= 2 ? "BULLISH" :
-    "NEUTRE";
-
-  const sentimentColor =
-    sentiment === "BEARISH" ? RED :
-    sentiment === "BULLISH" ? GREEN :
-    YELLOW;
+    {
+      sec: "Smart Money",
+      name: "Whales 1k-10k",
+      val: "+" + (vals.whales / 1000).toFixed(1) + "k BTC",
+      sub: "accumulation",
+      sc: { n: vals.whales > 0 ? 4 : 1, c: 2, m: 3, l: 4 },
+      nowL: "ACCUM",
+      hz: "LT"
+    }
+  ];
 
   return (
-    <div style={{maxWidth:1100,margin:"40px auto",padding:20}}>
-
+    <div
+      style={{
+        background: "#010409",
+        padding: 20,
+        borderRadius: 14,
+        border: `1px solid ${BORDER}`,
+        fontFamily: "system-ui"
+      }}
+    >
       {/* HEADER */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          borderBottom: `1px solid ${BORDER}`,
+          paddingBottom: 10
+        }}
+      >
         <div>
-          <div style={{fontSize:24,fontWeight:700}}>
-            BTC ON-CHAIN — TABLEAU THERMIQUE
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#fff"
+            }}
+          >
+            BTC ON-CHAIN — THERMAL MODEL
           </div>
-          {lastUpdate && (
-            <div style={{fontSize:12,color:"#6ee7b7"}}>
-              Dernière mise à jour : {lastUpdate}
-            </div>
-          )}
+          <div style={{ fontSize: 11, color: MUTED }}>
+            Pipeline automatique CryptoQuant / AI
+          </div>
         </div>
 
-        <div style={{fontSize:32,fontWeight:700,color:"#ffe066"}}>
-          ${vals.btcPrice ? (vals.btcPrice/1000).toFixed(1) : "--"}K
-        </div>
-      </div>
-
-      {/* GLOBAL STATUS */}
-      <div style={{
-        background:PANEL,
-        border:`1px solid ${BORDER}`,
-        borderRadius:10,
-        padding:16,
-        marginBottom:20
-      }}>
-        <div style={{fontSize:12,opacity:.7}}>SIGNAL GLOBAL</div>
-        <div style={{fontSize:28,fontWeight:700,color:sentimentColor}}>
-          {sentiment}
-        </div>
-        <div style={{fontSize:12,marginTop:4}}>
-          Score thermique : {thermalScore} / 6
+        <div
+          style={{
+            fontFamily: "monospace",
+            fontSize: 24,
+            fontWeight: 700,
+            color: "#f2cc60"
+          }}
+        >
+          ${(vals.btcPrice / 1000).toFixed(1)}K
         </div>
       </div>
 
-      {/* INDICATEURS */}
-      <Card
-        title="MVRV Percentile"
-        value={vals.mvrvPct?.toFixed(2)}
-        heat={heatColor(vals.mvrvPct, 0, 2)}
-      />
+      {/* TABLE */}
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ fontSize: 10, color: MUTED }}>
+            <th style={{ textAlign: "left", padding: 6 }}>Metric</th>
+            <th>Now</th>
+            <th>CT</th>
+            <th>MT</th>
+            <th>LT</th>
+            <th>Bias</th>
+            <th>Horizon</th>
+          </tr>
+        </thead>
 
-      <Card
-        title="Mayer Multiple"
-        value={vals.mayerMultiple?.toFixed(2)}
-        heat={heatColor(vals.mayerMultiple, 0, 2)}
-      />
+        <tbody>
+          {rows.map((row, i) => (
+            <React.Fragment key={i}>
+              {row.sec && <SectionRow label={row.sec} />}
 
-      <Card
-        title="ETF Netflow"
-        value={vals.etfNetflow?.toFixed(2)}
-        heat={heatColor(-vals.etfNetflow, -50, 50)}
-      />
+              <tr style={{ borderBottom: `1px solid rgba(255,255,255,.04)` }}>
+                <td style={{ padding: "8px 10px" }}>
+                  <div style={{ fontSize: 12, color: "#e6edf3" }}>
+                    {row.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      color: MUTED
+                    }}
+                  >
+                    {row.val}
+                  </div>
+                  <div style={{ fontSize: 9, color: "#2d3748" }}>
+                    {row.sub}
+                  </div>
+                </td>
 
-      <Card
-        title="Futures Power"
-        value={vals.futuresPower}
-        heat={heatColor(vals.futuresPower, 0, 100)}
-      />
+                <TC level={row.sc.n} label={row.nowL} />
+                <TC level={row.sc.c} />
+                <TC level={row.sc.m} />
+                <TC level={row.sc.l} />
 
-      <Card
-        title="SOPR"
-        value={vals.soprRatio?.toFixed(2)}
-        heat={heatColor(vals.soprRatio, 0.9, 1.1)}
-      />
+                <td style={{ textAlign: "center" }}>
+                  <Badge level={row.sc.n} />
+                </td>
 
+                <td
+                  style={{
+                    textAlign: "center",
+                    fontSize: 10,
+                    color: MUTED
+                  }}
+                >
+                  {row.hz}
+                </td>
+              </tr>
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<BTCThermalAI />);
