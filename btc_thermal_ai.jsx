@@ -2,60 +2,79 @@ const { useState, useEffect } = React;
 
 function BTCDashboardCIO() {
 
-  // ───────── STATE ─────────
-  const [vals, setVals] = useState({
-    price: 0,
-    etfNetflow: 0,
-    usdtSma: 0,
-    ntvSellCount: 0,
-    futuresPower: 0,
-    bullBear30d: 0,
-    sopr: 0,
-    sthNupl: 0,
-    utxo: 0,
-    whales: 0,
-    spentBands: 0,
-    mvrv: 0,
-    mayer: 0,
-    sharpe: 0
-  });
-
+  const [vals, setVals] = useState({});
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [debugKeys, setDebugKeys] = useState([]);
 
-  // ───────── LOAD JSON ─────────
+  // ───────── SAFE GET (support plusieurs noms) ─────────
+  const get = (data, keys, def = 0) => {
+    for (let k of keys) {
+      if (data[k] !== undefined && data[k] !== null) return data[k];
+    }
+    return def;
+  };
+
+  // ───────── FETCH JSON ─────────
   useEffect(() => {
-    fetch("btc_dashboard.json")
-      .then(res => res.json())
+    fetch("./btc_dashboard.json", { cache: "no-store" })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Fichier btc_dashboard.json introuvable (status " + res.status + ")");
+        }
+        return res.json();
+      })
       .then(data => {
+        console.log("JSON reçu:", data);
+        setDebugKeys(Object.keys(data));
+
         setVals({
-          price: data.price || 0,
-          etfNetflow: data.etfNetflow || 0,
-          usdtSma: data.usdtSma || 0,
-          ntvSellCount: data.ntvSellCount || 0,
-          futuresPower: data.futuresPower || 0,
-          bullBear30d: data.bullBear30d || 0,
-          sopr: data.sopr || 0,
-          sthNupl: data.sthNupl || 0,
-          utxo: data.utxo || 0,
-          whales: data.whales || 0,
-          spentBands: data.spentBands || 0,
-          mvrv: data.mvrv || 0,
-          mayer: data.mayer || 0,
-          sharpe: data.sharpe || 0
+          price: get(data, ["price", "btcPrice"]),
+          etfNetflow: get(data, ["etfNetflow", "etf"]),
+          usdtSma: get(data, ["usdtSma", "usdt"]),
+          ntvSellCount: get(data, ["ntvSellCount", "ntv"]),
+          futuresPower: get(data, ["futuresPower", "futures"]),
+          bullBear30d: get(data, ["bullBear30d", "bullBear"]),
+          sopr: get(data, ["sopr"]),
+          sthNupl: get(data, ["sthNupl", "nupl"]),
+          utxo: get(data, ["utxo"]),
+          whales: get(data, ["whales", "accumulation60d"]),
+          spentBands: get(data, ["spentBands"]),
+          mvrv: get(data, ["mvrv", "mvrvPct"]),
+          mayer: get(data, ["mayer"]),
+          sharpe: get(data, ["sharpe"])
         });
+
         setLoaded(true);
       })
       .catch(err => {
-        console.error("Erreur btc_dashboard.json", err);
+        console.error(err);
+        setError(err.message);
         setLoaded(true);
       });
   }, []);
 
+  // ───────── LOADING / ERROR ─────────
   if (!loaded) {
     return <div style={{color:"#fff",padding:40}}>Chargement BTC Dashboard...</div>;
   }
 
-  // ───────── HEAT MODEL (institutional) ─────────
+  if (error) {
+    return (
+      <div style={{color:"#fff",padding:40}}>
+        <h2>Erreur chargement JSON</h2>
+        <div>{error}</div>
+        <br/>
+        <div>Vérifie que :</div>
+        <ul>
+          <li>btc_dashboard.json est dans le même dossier</li>
+          <li>Tu ouvres via serveur (Live Server / localhost)</li>
+        </ul>
+      </div>
+    );
+  }
+
+  // ───────── HEAT MODEL ─────────
   const heat = (v, low, mid, high) => {
     if (v <= low) return { score: 9, color:"#22c55e" };
     if (v <= mid) return { score: 6, color:"#fde047" };
@@ -69,14 +88,12 @@ function BTCDashboardCIO() {
     sharpe: heat(vals.sharpe, -20, 10, 40),
     sopr: heat(vals.sopr, 0.98, 1.02, 1.08),
     utxo: heat(vals.utxo, 3, 8, 15),
-    futures: heat(vals.futuresPower, 40, 55, 70),
-    bullbear: heat(vals.bullBear30d, -0.2, 0.2, 0.6)
+    futures: heat(vals.futuresPower, 40, 55, 70)
   };
 
   const scores = Object.values(model).map(m => m.score);
   const composite = scores.reduce((a,b)=>a+b,0) / scores.length;
 
-  // ───────── MARKET REGIME ─────────
   let regime = "NEUTRAL";
   if (composite >= 7.5) regime = "ACCUMULATION";
   else if (composite >= 6) regime = "EARLY BULL";
@@ -90,17 +107,6 @@ function BTCDashboardCIO() {
     : composite >= 4.5 ? "#fde047"
     : composite >= 3 ? "#f59e0b"
     : "#ef4444";
-
-  // ───────── CIO FAIR VALUE MODEL ─────────
-  const fairValue = vals.price * (composite / 5);
-  const bottomZone = fairValue * 0.7;
-  const topZone = fairValue * 1.5;
-
-  let cioSignal = "HOLD";
-  if (vals.price < bottomZone) cioSignal = "STRONG BUY";
-  else if (vals.price < fairValue) cioSignal = "ACCUMULATE";
-  else if (vals.price > topZone) cioSignal = "RISK OFF";
-  else if (composite < 3.5) cioSignal = "REDUCE";
 
   // ───────── STYLES ─────────
   const page = {
@@ -119,105 +125,66 @@ function BTCDashboardCIO() {
     marginBottom:16
   };
 
-  const section = {
-    color:"#9ca3af",
-    fontSize:12,
-    marginBottom:8,
-    letterSpacing:1
-  };
-
   const row = {
     display:"flex",
     justifyContent:"space-between",
-    padding:"6px 0",
-    fontSize:14
+    padding:"6px 0"
   };
-
-  const dot = (color) => ({
-    width:10,
-    height:10,
-    borderRadius:3,
-    background:color,
-    marginRight:8
-  });
-
-  const HeatRow = (label, value, metric) => (
-    <div style={row}>
-      <div style={{display:"flex",alignItems:"center"}}>
-        <div style={dot(metric.color)}></div>
-        {label}
-      </div>
-      <div>{value}</div>
-    </div>
-  );
 
   // ───────── UI ─────────
   return (
     <div style={page}>
 
-      {/* HEADER */}
-      <div style={{marginBottom:20}}>
-        <div style={{fontSize:28,fontWeight:700}}>
-          BTC DASHBOARD — CIO MODEL
-        </div>
-        <div style={{fontSize:22,color:"#facc15"}}>
-          ${vals.price.toLocaleString()}
-        </div>
-      </div>
+      <h1>BTC DASHBOARD — CIO MODEL</h1>
+      <h2 style={{color:"#facc15"}}>${vals.price.toLocaleString()}</h2>
 
-      {/* CIO PANEL */}
       <div style={{...card,border:`2px solid ${regimeColor}`}}>
-        <div style={{fontSize:12,color:"#9ca3af"}}>Composite Score</div>
-        <div style={{fontSize:36,fontWeight:700,color:regimeColor}}>
-          {composite.toFixed(1)}
-        </div>
+        <div>Composite Score: {composite.toFixed(1)}</div>
         <div>{regime}</div>
-
-        <div style={{marginTop:10,fontSize:13}}>
-          Fair Value: ${fairValue.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
-          Bottom Zone: ${bottomZone.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
-          Top Zone: ${topZone.toLocaleString(undefined,{maximumFractionDigits:0})}<br/>
-          <b>CIO Signal: {cioSignal}</b>
-        </div>
       </div>
 
-      {/* Flux & Liquidité */}
+      {/* Flux */}
       <div style={card}>
-        <div style={section}>── Flux & Liquidité</div>
-        <div style={row}><span>ETF Netflow 30D Sum</span><span>{vals.etfNetflow}</span></div>
-        <div style={row}><span>USDT Stablecoin SMA(30)</span><span>{vals.usdtSma}</span></div>
-        <div style={row}><span>Net Taker Volume Binance</span><span>{vals.ntvSellCount}</span></div>
+        <b>── Flux & Liquidité</b>
+        <div style={row}><span>ETF Netflow 30D</span><span>{vals.etfNetflow}</span></div>
+        <div style={row}><span>USDT SMA(30)</span><span>{vals.usdtSma}</span></div>
+        <div style={row}><span>Net Taker Volume</span><span>{vals.ntvSellCount}</span></div>
       </div>
 
       {/* Dérivés */}
       <div style={card}>
-        <div style={section}>── Dérivés & Structure de marché</div>
-        {HeatRow("Futures Power 30D Change", vals.futuresPower, model.futures)}
-        {HeatRow("Bull/Bear Cycle Indicator", vals.bullBear30d, model.bullbear)}
+        <b>── Dérivés</b>
+        <div style={row}><span>Futures Power</span><span>{vals.futuresPower}</span></div>
+        <div style={row}><span>Bull/Bear 30D</span><span>{vals.bullBear30d}</span></div>
       </div>
 
       {/* Holders */}
       <div style={card}>
-        <div style={section}>── Profitabilité & Comportement des holders</div>
-        {HeatRow("LTH/STH SOPR Ratio", vals.sopr, model.sopr)}
-        <div style={row}><span>aLTH/aSTH NUPL</span><span>{vals.sthNupl}</span></div>
-        {HeatRow("UTXO Block P/L Count Ratio", vals.utxo, model.utxo)}
-        <div style={row}><span>Accumulation Cohortes (60D)</span><span>{vals.whales}</span></div>
-        <div style={row}><span>Spent Output Value Bands</span><span>{vals.spentBands}</span></div>
+        <b>── Holders</b>
+        <div style={row}><span>SOPR</span><span>{vals.sopr}</span></div>
+        <div style={row}><span>NUPL</span><span>{vals.sthNupl}</span></div>
+        <div style={row}><span>UTXO</span><span>{vals.utxo}</span></div>
+        <div style={row}><span>Accumulation 60D</span><span>{vals.whales}</span></div>
+        <div style={row}><span>Spent Bands</span><span>{vals.spentBands}</span></div>
       </div>
 
       {/* Valorisation */}
       <div style={card}>
-        <div style={section}>── Valorisation & Risque Long Terme</div>
-        {HeatRow("MVRV Percentile — Cycle", vals.mvrv, model.mvrv)}
-        {HeatRow("Mayer Multiple", vals.mayer, model.mayer)}
-        {HeatRow("Sharpe Ratio (court terme)", vals.sharpe, model.sharpe)}
+        <b>── Valorisation</b>
+        <div style={row}><span>MVRV</span><span>{vals.mvrv}</span></div>
+        <div style={row}><span>Mayer</span><span>{vals.mayer}</span></div>
+        <div style={row}><span>Sharpe</span><span>{vals.sharpe}</span></div>
+      </div>
+
+      {/* DEBUG */}
+      <div style={{fontSize:11,color:"#9ca3af",marginTop:20}}>
+        Clés JSON détectées: {debugKeys.join(", ")}
       </div>
 
     </div>
   );
 }
 
-// Render (Babel compatible)
+// Render Babel
 ReactDOM.createRoot(document.getElementById("root"))
   .render(<BTCDashboardCIO />);
