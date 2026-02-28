@@ -327,14 +327,23 @@ useEffect(() => {
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
           <div style={{fontFamily:"monospace",fontSize:24,fontWeight:700,color:"#ffe066"}}>${(vals.btcPrice/1000).toFixed(1)}K</div>
           <div style={{display:"flex",gap:6}}>
-            </button>
-            <button onClick={()=>setShowHistory(h=>!h)} style={{
-              background:PANEL,color:"#c9d1d9",border:`1px solid ${BORDER}`,borderRadius:6,
-              padding:"5px 12px",fontSize:10,cursor:"pointer",fontFamily:"monospace",letterSpacing:.8}}>
-              📜 HISTORIQUE           
-          </div>
-        </div>
-      </div>
+  <button
+    onClick={() => setShowHistory(h => !h)}
+    style={{
+      background: PANEL,
+      color: "#c9d1d9",
+      border: `1px solid ${BORDER}`,
+      borderRadius: 6,
+      padding: "5px 12px",
+      fontSize: 10,
+      cursor: "pointer",
+      fontFamily: "monospace",
+      letterSpacing: .8
+    }}
+  >
+    📜 HISTORIQUE
+  </button>
+</div>
 
       {/* HISTORY PANEL */}
       {showHistory && history.length > 0 && (
